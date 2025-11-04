@@ -1,56 +1,269 @@
-import { useCallback } from "react";
-import { RiMoonFill, RiSunFill } from "react-icons/ri";
+import { RotateCcw, ChevronDown } from "lucide-react";
 import { NavLink, type NavLinkRenderProps } from "react-router-dom";
 import { useTheme } from "../contexts/ThemeProvider";
 import ConnectionStatusIcon from "./ConnectionStatus";
+import { motion, AnimatePresence } from "framer-motion";
+import { useState, useRef, useEffect } from "react";
 
 export function Header() {
-  const { screenWidth, toggleTheme, isDarkMode, appTitle, setAppTitle, isNarrow } = useTheme();
-  const handleTitleChange = useCallback(
-    (newTitle: string) => {
-      setAppTitle(newTitle.replace(/\n/g, "").trim().substring(0, 64) || "llama-swap");
-    },
-    [setAppTitle]
-  );
+  const { screenWidth } = useTheme();
+  const [isRestarting, setIsRestarting] = useState(false);
+  const [isReconfiguring, setIsReconfiguring] = useState(false);
+  const [showRestartMenu, setShowRestartMenu] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowRestartMenu(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSoftRestart = async () => {
+    if (isRestarting) return;
+    
+    try {
+      setIsRestarting(true);
+      setShowRestartMenu(false);
+      const response = await fetch('/api/server/restart', {
+        method: 'POST',
+      });
+      
+      if (response.ok) {
+        // Soft restart doesn't kill the server, just reload after a moment
+        setTimeout(() => {
+          setIsRestarting(false);
+          window.location.reload();
+        }, 3000);
+      }
+    } catch (error) {
+      console.error('Failed to soft restart server:', error);
+      setIsRestarting(false);
+    }
+  };
+
+  const handleHardRestart = async () => {
+    if (isRestarting) return;
+    
+    try {
+      setIsRestarting(true);
+      setShowRestartMenu(false);
+      const response = await fetch('/api/server/restart/hard', {
+        method: 'POST',
+      });
+      
+      if (response.ok) {
+        // Hard restart kills and respawns the server
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('Failed to hard restart server:', error);
+      setIsRestarting(false);
+    }
+  };
+
+  const handleForceReconfigure = async () => {
+    if (isReconfiguring || isRestarting) return;
+
+    try {
+      setIsReconfiguring(true);
+      setShowRestartMenu(false);
+      const response = await fetch('/api/config/regenerate-from-db', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          options: {
+            enableJinja: true,
+            throughputFirst: true,
+            minContext: 16384,
+            preferredContext: 32768
+          }
+        })
+      });
+
+      if (response.ok) {
+        // Explicitly trigger a soft restart so remotes pick up the new config
+        try {
+          await fetch('/api/server/restart', { method: 'POST' });
+        } catch (e) {
+          // Even if restart call fails, proceed to reload the page; backend may still apply changes
+          console.error('Soft restart after reconfigure failed (continuing):', e);
+        }
+        setTimeout(() => {
+          setIsReconfiguring(false);
+          window.location.reload();
+        }, 3000);
+      } else {
+        console.error('Force Reconfigure failed:', await response.text());
+        setIsReconfiguring(false);
+      }
+    } catch (error) {
+      console.error('Force Reconfigure error:', error);
+      setIsReconfiguring(false);
+    }
+  };
 
   const navLinkClass = ({ isActive }: NavLinkRenderProps) =>
-    `text-gray-600 hover:text-black dark:text-gray-300 dark:hover:text-gray-100 p-1 ${isActive ? "font-semibold" : ""}`;
+    `inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+      isActive
+        ? "bg-brand-500 text-white shadow-sm"
+        : "text-text-secondary hover:text-text-primary hover:bg-surface-secondary"
+    }`;
+
+  const secondaryNavLinkClass = ({ isActive }: NavLinkRenderProps) =>
+    `inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+      isActive
+        ? "bg-surface-secondary text-text-primary border border-border-accent"
+        : "text-text-tertiary hover:text-text-secondary hover:bg-surface-secondary/50"
+    }`;
 
   return (
-    <header className={`flex items-center justify-between bg-surface border-b border-border px-4 ${isNarrow ? "py-1 h-[60px]" : "p-2 h-[75px]"}`}>
-      {screenWidth !== "xs" && screenWidth !== "sm" && (
-        <h1
-          contentEditable
-          suppressContentEditableWarning
-          className="p-0 outline-none hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-          onBlur={(e) => handleTitleChange(e.currentTarget.textContent || "(set title)")}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              handleTitleChange(e.currentTarget.textContent || "(set title)");
-              e.currentTarget.blur();
-            }
-          }}
-        >
-          {appTitle}
-        </h1>
-      )}
+    <motion.nav 
+      initial={{ y: -100, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      className="flex items-center justify-between bg-surface/80 backdrop-blur-md border-b border-border-secondary px-6 py-3 h-16 sticky top-0 z-50"
+    >
+      {/* FrogLLM Branding */}
+      <motion.div
+        className="flex items-center gap-3"
+        whileHover={{ scale: 1.02 }}
+      >
+        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-green-400 to-green-600 shadow-lg">
+          <span className="text-2xl">🐸</span>
+        </div>
+        <div className="flex flex-col">
+          <h1 className="text-xl font-bold bg-gradient-to-r from-green-400 to-green-600 bg-clip-text text-transparent leading-none">
+            FrogLLM
+          </h1>
+          {screenWidth !== "xs" && (
+            <span className="text-xs text-text-tertiary leading-none">
+              Leap into AI 🌊
+            </span>
+          )}
+        </div>
+      </motion.div>
 
-      <menu className="flex items-center gap-4">
-        <NavLink to="/" className={navLinkClass} type="button">
-          Logs
-        </NavLink>
-        <NavLink to="/models" className={navLinkClass} type="button">
-          Models
-        </NavLink>
-        <NavLink to="/activity" className={navLinkClass} type="button">
-          Activity
-        </NavLink>
-        <button className="" onClick={toggleTheme}>
-          {isDarkMode ? <RiMoonFill /> : <RiSunFill />}
-        </button>
-        <ConnectionStatusIcon />
-      </menu>
-    </header>
+      {/* Navigation & Status */}
+      <div className="flex items-center gap-4">
+        {/* Navigation Links */}
+        <nav className="flex items-center gap-1">
+          {/* Primary Workflow - Core Features */}
+          <NavLink to="/setup" className={navLinkClass}>
+            Setup
+          </NavLink>
+          <NavLink to="/models" className={navLinkClass}>
+            Models
+          </NavLink>
+          <NavLink to="/config" className={navLinkClass}>
+            Configuration
+          </NavLink>
+          <NavLink to="/activity" className={navLinkClass}>
+            Activity
+          </NavLink>
+          <NavLink to="/gpu" className={navLinkClass}>
+            GPU
+          </NavLink>
+
+          {/* Separator */}
+          <div className="w-px h-6 bg-border-secondary mx-2"></div>
+
+          {/* Secondary Tools */}
+          <NavLink to="/downloader" className={secondaryNavLinkClass}>
+            Downloader
+          </NavLink>
+          <NavLink to="/" className={secondaryNavLinkClass}>
+            Logs
+          </NavLink>
+        </nav>
+
+        {/* Status & Actions */}
+        <div className="flex items-center gap-3 pl-4 border-l border-border-secondary">
+          <div className="relative" ref={dropdownRef}>
+            <motion.button
+              onClick={() => setShowRestartMenu(!showRestartMenu)}
+              disabled={isRestarting}
+              className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                isRestarting
+                  ? "bg-amber-500/20 text-amber-600 cursor-not-allowed"
+                  : "text-text-tertiary hover:text-text-secondary hover:bg-surface-secondary/50"
+              }`}
+              whileHover={!isRestarting ? { scale: 1.02 } : {}}
+              whileTap={!isRestarting ? { scale: 0.98 } : {}}
+              title="Restart Server Options"
+            >
+              <RotateCcw 
+                className={`w-4 h-4 ${(isRestarting || isReconfiguring) ? 'animate-spin' : ''}`} 
+              />
+              {screenWidth !== "xs" && (
+                <span>{isRestarting ? "Restarting..." : (isReconfiguring ? "Reconfiguring..." : "Restart")}</span>
+              )}
+              {!isRestarting && (
+                <ChevronDown className="w-3 h-3" />
+              )}
+            </motion.button>
+
+            {/* Restart Options Dropdown */}
+            <AnimatePresence>
+              {showRestartMenu && !isRestarting && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                  className="absolute top-full right-0 mt-2 w-64 bg-gray-900/95 backdrop-blur-md border border-gray-700 rounded-lg shadow-2xl z-50"
+                >
+                  <div className="p-2">
+                    <button
+                      onClick={handleSoftRestart}
+                      className="w-full text-left px-3 py-2 rounded-md hover:bg-gray-800/80 transition-colors group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <RotateCcw className="w-4 h-4 text-blue-400" />
+                        <div>
+                          <div className="font-medium text-white">Soft Restart</div>
+                          <div className="text-xs text-gray-300">Reload config & restart models</div>
+                        </div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={handleHardRestart}
+                      className="w-full text-left px-3 py-2 rounded-md hover:bg-gray-800/80 transition-colors group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <RotateCcw className="w-4 h-4 text-orange-400" />
+                        <div>
+                          <div className="font-medium text-white">Hard Restart</div>
+                          <div className="text-xs text-gray-300">Restart entire server process</div>
+                        </div>
+                      </div>
+                    </button>
+                    <div className="h-px bg-gray-800 my-1" />
+                    <button
+                      onClick={handleForceReconfigure}
+                      disabled={isReconfiguring}
+                      className={`w-full text-left px-3 py-2 rounded-md transition-colors group ${isReconfiguring ? 'opacity-70 cursor-not-allowed' : 'hover:bg-gray-800/80'}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <RotateCcw className={`w-4 h-4 text-brand-400 ${isReconfiguring ? 'animate-spin' : ''}`} />
+                        <div>
+                          <div className="font-medium text-white">Force Reconfigure</div>
+                          <div className="text-xs text-gray-300">Regenerate config from tracked folders</div>
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+          <ConnectionStatusIcon />
+        </div>
+      </div>
+    </motion.nav>
   );
 }

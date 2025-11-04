@@ -1,0 +1,37 @@
+# FrogLLM Configuration
+# This is a clean config for testing model downloads
+
+healthCheckTimeout: 300
+logLevel: info
+startPort: 8100
+minFreeMemoryPercent: 10.0
+
+macros:
+  "llama-server-base": >
+    binaries/llama-server/build/bin/llama-server
+    --host 127.0.0.1
+    --port ${PORT}
+    --metrics
+    --flash-attn auto
+    --no-warmup
+    --dry-penalty-last-n 0
+    --batch-size 2048
+    --ubatch-size 512
+
+  "llama-embed-base": >
+    binaries/llama-server/build/bin/llama-server
+    --host 127.0.0.1
+    --port ${PORT}
+    --embedding
+
+models:
+  # Models will be added here automatically when downloaded
+
+groups:
+  "all-models":
+    swap: false
+    exclusive: false
+    persistent: false
+    startPort: 8200
+    members:
+      # Model members will be added here automatically

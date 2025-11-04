@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/mostlygeek/llama-swap/proxy/config"
 	"gopkg.in/yaml.v3"
 )
 
@@ -66,18 +65,18 @@ func getTestPort() int {
 	return port
 }
 
-func getTestSimpleResponderConfig(expectedMessage string) config.ModelConfig {
+func getTestSimpleResponderConfig(expectedMessage string) ModelConfig {
 	return getTestSimpleResponderConfigPort(expectedMessage, getTestPort())
 }
 
-func getTestSimpleResponderConfigPort(expectedMessage string, port int) config.ModelConfig {
+func getTestSimpleResponderConfigPort(expectedMessage string, port int) ModelConfig {
 	// Create a YAML string with just the values we want to set
 	yamlStr := fmt.Sprintf(`
 cmd: '%s --port %d --silent --respond %s'
 proxy: "http://127.0.0.1:%d"
 `, simpleResponderPath, port, expectedMessage, port)
 
-	var cfg config.ModelConfig
+	var cfg ModelConfig
 	if err := yaml.Unmarshal([]byte(yamlStr), &cfg); err != nil {
 		panic(fmt.Sprintf("failed to unmarshal test config: %v in [%s]", err, yamlStr))
 	}

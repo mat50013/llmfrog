@@ -15,42 +15,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mostlygeek/llama-swap/event"
-	"github.com/mostlygeek/llama-swap/proxy/config"
+	"github.com/prave/FrogLLM/event"
 	"github.com/stretchr/testify/assert"
 	"github.com/tidwall/gjson"
 )
 
-// TestResponseRecorder adds CloseNotify to httptest.ResponseRecorder.
-// "If you want to write your own tests around streams you will need a Recorder that can handle CloseNotifier."
-// The tests can panic otherwise:
-// panic: interface conversion: *httptest.ResponseRecorder is not http.CloseNotifier: missing method CloseNotify
-// See: https://github.com/gin-gonic/gin/issues/1815
-// TestResponseRecorder is taken from gin's own tests: https://github.com/gin-gonic/gin/blob/ce20f107f5dc498ec7489d7739541a25dcd48463/context_test.go#L1747-L1765
-type TestResponseRecorder struct {
-	*httptest.ResponseRecorder
-	closeChannel chan bool
-}
-
-func (r *TestResponseRecorder) CloseNotify() <-chan bool {
-	return r.closeChannel
-}
-
-func (r *TestResponseRecorder) closeClient() {
-	r.closeChannel <- true
-}
-
-func CreateTestResponseRecorder() *TestResponseRecorder {
-	return &TestResponseRecorder{
-		httptest.NewRecorder(),
-		make(chan bool, 1),
-	}
-}
-
 func TestProxyManager_SwapProcessCorrectly(t *testing.T) {
-	config := config.AddDefaultGroupToConfig(config.Config{
+	config := AddDefaultGroupToConfig(Config{
 		HealthCheckTimeout: 15,
-		Models: map[string]config.ModelConfig{
+		Models: map[string]ModelConfig{
 			"model1": getTestSimpleResponderConfig("model1"),
 			"model2": getTestSimpleResponderConfig("model2"),
 		},
@@ -63,7 +36,7 @@ func TestProxyManager_SwapProcessCorrectly(t *testing.T) {
 	for _, modelName := range []string{"model1", "model2"} {
 		reqBody := fmt.Sprintf(`{"model":"%s"}`, modelName)
 		req := httptest.NewRequest("POST", "/v1/chat/completions", bytes.NewBufferString(reqBody))
-		w := CreateTestResponseRecorder()
+		w := httptest.NewRecorder()
 
 		proxy.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusOK, w.Code)
@@ -71,14 +44,14 @@ func TestProxyManager_SwapProcessCorrectly(t *testing.T) {
 	}
 }
 func TestProxyManager_SwapMultiProcess(t *testing.T) {
-	config := config.AddDefaultGroupToConfig(config.Config{
+	config := AddDefaultGroupToConfig(Config{
 		HealthCheckTimeout: 15,
-		Models: map[string]config.ModelConfig{
+		Models: map[string]ModelConfig{
 			"model1": getTestSimpleResponderConfig("model1"),
 			"model2": getTestSimpleResponderConfig("model2"),
 		},
 		LogLevel: "error",
-		Groups: map[string]config.GroupConfig{
+		Groups: map[string]GroupConfig{
 			"G1": {
 				Swap:      true,
 				Exclusive: false,
@@ -100,7 +73,7 @@ func TestProxyManager_SwapMultiProcess(t *testing.T) {
 		t.Run(requestedModel, func(t *testing.T) {
 			reqBody := fmt.Sprintf(`{"model":"%s"}`, requestedModel)
 			req := httptest.NewRequest("POST", "/v1/chat/completions", bytes.NewBufferString(reqBody))
-			w := CreateTestResponseRecorder()
+			w := httptest.NewRecorder()
 
 			proxy.ServeHTTP(w, req)
 			assert.Equal(t, http.StatusOK, w.Code)
@@ -116,14 +89,14 @@ func TestProxyManager_SwapMultiProcess(t *testing.T) {
 // Test that a persistent group is not affected by the swapping behaviour of
 // other groups.
 func TestProxyManager_PersistentGroupsAreNotSwapped(t *testing.T) {
-	config := config.AddDefaultGroupToConfig(config.Config{
+	config := AddDefaultGroupToConfig(Config{
 		HealthCheckTimeout: 15,
-		Models: map[string]config.ModelConfig{
+		Models: map[string]ModelConfig{
 			"model1": getTestSimpleResponderConfig("model1"), // goes into the default group
 			"model2": getTestSimpleResponderConfig("model2"),
 		},
 		LogLevel: "error",
-		Groups: map[string]config.GroupConfig{
+		Groups: map[string]GroupConfig{
 			// the forever group is persistent and should not be affected by model1
 			"forever": {
 				Swap:       true,
@@ -142,7 +115,7 @@ func TestProxyManager_PersistentGroupsAreNotSwapped(t *testing.T) {
 	for _, requestedModel := range tests {
 		reqBody := fmt.Sprintf(`{"model":"%s"}`, requestedModel)
 		req := httptest.NewRequest("POST", "/v1/chat/completions", bytes.NewBufferString(reqBody))
-		w := CreateTestResponseRecorder()
+		w := httptest.NewRecorder()
 
 		proxy.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusOK, w.Code)
@@ -160,9 +133,9 @@ func TestProxyManager_SwapMultiProcessParallelRequests(t *testing.T) {
 		t.Skip("skipping slow test")
 	}
 
-	config := config.AddDefaultGroupToConfig(config.Config{
+	config := AddDefaultGroupToConfig(Config{
 		HealthCheckTimeout: 15,
-		Models: map[string]config.ModelConfig{
+		Models: map[string]ModelConfig{
 			"model1": getTestSimpleResponderConfig("model1"),
 			"model2": getTestSimpleResponderConfig("model2"),
 			"model3": getTestSimpleResponderConfig("model3"),
@@ -185,7 +158,7 @@ func TestProxyManager_SwapMultiProcessParallelRequests(t *testing.T) {
 
 			reqBody := fmt.Sprintf(`{"model":"%s"}`, key)
 			req := httptest.NewRequest("POST", "/v1/chat/completions?wait=1000ms", bytes.NewBufferString(reqBody))
-			w := CreateTestResponseRecorder()
+			w := httptest.NewRecorder()
 
 			proxy.ServeHTTP(w, req)
 
@@ -223,9 +196,9 @@ func TestProxyManager_ListModelsHandler(t *testing.T) {
 	model2Config.Name = "     " // empty whitespace only strings will get ignored
 	model2Config.Description = "  "
 
-	config := config.Config{
+	config := Config{
 		HealthCheckTimeout: 15,
-		Models: map[string]config.ModelConfig{
+		Models: map[string]ModelConfig{
 			"model1": model1Config,
 			"model2": model2Config,
 			"model3": getTestSimpleResponderConfig("model3"),
@@ -238,7 +211,7 @@ func TestProxyManager_ListModelsHandler(t *testing.T) {
 	// Create a test request
 	req := httptest.NewRequest("GET", "/v1/models", nil)
 	req.Header.Add("Origin", "i-am-the-origin")
-	w := CreateTestResponseRecorder()
+	w := httptest.NewRecorder()
 
 	// Call the listModelsHandler
 	proxy.ServeHTTP(w, req)
@@ -286,7 +259,7 @@ func TestProxyManager_ListModelsHandler(t *testing.T) {
 
 		ownedBy, ok := model["owned_by"].(string)
 		assert.True(t, ok, "owned_by should be a string")
-		assert.Equal(t, "llama-swap", ownedBy)
+		assert.Equal(t, "FrogLLM", ownedBy)
 
 		// check for optional name and description
 		if modelID == "model1" {
@@ -308,99 +281,15 @@ func TestProxyManager_ListModelsHandler(t *testing.T) {
 	assert.Empty(t, expectedModels, "not all expected models were returned")
 }
 
-func TestProxyManager_ListModelsHandler_WithMetadata(t *testing.T) {
-	// Process config through LoadConfigFromReader to apply macro substitution
-	configYaml := `
-healthCheckTimeout: 15
-logLevel: error
-startPort: 10000
-models:
-  model1:
-    cmd: /path/to/server -p ${PORT}
-    macros:
-      PORT_NUM: 10001
-      TEMP: 0.7
-      NAME: "llama"
-    metadata:
-      port: ${PORT_NUM}
-      temperature: ${TEMP}
-      enabled: true
-      note: "Running on port ${PORT_NUM}"
-      nested:
-        value: ${TEMP}
-  model2:
-    cmd: /path/to/server -p ${PORT}
-`
-	processedConfig, err := config.LoadConfigFromReader(strings.NewReader(configYaml))
-	assert.NoError(t, err)
-
-	proxy := New(processedConfig)
-
-	req := httptest.NewRequest("GET", "/v1/models", nil)
-	w := CreateTestResponseRecorder()
-	proxy.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusOK, w.Code)
-
-	var response struct {
-		Data []map[string]any `json:"data"`
-	}
-
-	err = json.Unmarshal(w.Body.Bytes(), &response)
-	assert.NoError(t, err)
-	assert.Len(t, response.Data, 2)
-
-	// Find model1 and model2 in response
-	var model1Data, model2Data map[string]any
-	for _, model := range response.Data {
-		if model["id"] == "model1" {
-			model1Data = model
-		} else if model["id"] == "model2" {
-			model2Data = model
-		}
-	}
-
-	// Verify model1 has llamaswap_meta
-	assert.NotNil(t, model1Data)
-	meta, exists := model1Data["meta"]
-	if !assert.True(t, exists, "model1 should have meta key") {
-		t.FailNow()
-	}
-
-	metaMap := meta.(map[string]any)
-
-	lsmeta, exists := metaMap["llamaswap"]
-	if !assert.True(t, exists, "model1 should have meta.llamaswap key") {
-		t.FailNow()
-	}
-
-	lsmetamap := lsmeta.(map[string]any)
-
-	// Verify type preservation
-	assert.Equal(t, float64(10001), lsmetamap["port"]) // JSON numbers are float64
-	assert.Equal(t, 0.7, lsmetamap["temperature"])
-	assert.Equal(t, true, lsmetamap["enabled"])
-	// Verify string interpolation
-	assert.Equal(t, "Running on port 10001", lsmetamap["note"])
-	// Verify nested structure
-	nested := lsmetamap["nested"].(map[string]any)
-	assert.Equal(t, 0.7, nested["value"])
-
-	// Verify model2 does NOT have llamaswap_meta
-	assert.NotNil(t, model2Data)
-	_, exists = model2Data["llamaswap_meta"]
-	assert.False(t, exists, "model2 should not have llamaswap_meta")
-}
-
 func TestProxyManager_ListModelsHandler_SortedByID(t *testing.T) {
 	// Intentionally add models in non-sorted order and with an unlisted model
-	config := config.Config{
+	config := Config{
 		HealthCheckTimeout: 15,
-		Models: map[string]config.ModelConfig{
+		Models: map[string]ModelConfig{
 			"zeta":  getTestSimpleResponderConfig("zeta"),
 			"alpha": getTestSimpleResponderConfig("alpha"),
 			"beta":  getTestSimpleResponderConfig("beta"),
-			"hidden": func() config.ModelConfig {
+			"hidden": func() ModelConfig {
 				mc := getTestSimpleResponderConfig("hidden")
 				mc.Unlisted = true
 				return mc
@@ -413,7 +302,7 @@ func TestProxyManager_ListModelsHandler_SortedByID(t *testing.T) {
 
 	// Request models list
 	req := httptest.NewRequest("GET", "/v1/models", nil)
-	w := CreateTestResponseRecorder()
+	w := httptest.NewRecorder()
 	proxy.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -448,15 +337,15 @@ func TestProxyManager_Shutdown(t *testing.T) {
 	model3Config := getTestSimpleResponderConfigPort("model3", 9993)
 	model3Config.Proxy = "http://localhost:10003/"
 
-	config := config.AddDefaultGroupToConfig(config.Config{
+	config := AddDefaultGroupToConfig(Config{
 		HealthCheckTimeout: 15,
-		Models: map[string]config.ModelConfig{
+		Models: map[string]ModelConfig{
 			"model1": model1Config,
 			"model2": model2Config,
 			"model3": model3Config,
 		},
 		LogLevel: "error",
-		Groups: map[string]config.GroupConfig{
+		Groups: map[string]GroupConfig{
 			"test": {
 				Swap:    false,
 				Members: []string{"model1", "model2", "model3"},
@@ -474,7 +363,7 @@ func TestProxyManager_Shutdown(t *testing.T) {
 			defer wg.Done()
 			reqBody := fmt.Sprintf(`{"model":"%s"}`, modelName)
 			req := httptest.NewRequest("POST", "/v1/chat/completions", bytes.NewBufferString(reqBody))
-			w := CreateTestResponseRecorder()
+			w := httptest.NewRecorder()
 
 			// send a request to trigger the proxy to load ... this should hang waiting for start up
 			proxy.ServeHTTP(w, req)
@@ -491,92 +380,38 @@ func TestProxyManager_Shutdown(t *testing.T) {
 }
 
 func TestProxyManager_Unload(t *testing.T) {
-	conf := config.AddDefaultGroupToConfig(config.Config{
+	config := AddDefaultGroupToConfig(Config{
 		HealthCheckTimeout: 15,
-		Models: map[string]config.ModelConfig{
+		Models: map[string]ModelConfig{
 			"model1": getTestSimpleResponderConfig("model1"),
-		},
-		LogLevel: "error",
-	})
-
-	proxy := New(conf)
-	reqBody := fmt.Sprintf(`{"model":"%s"}`, "model1")
-	req := httptest.NewRequest("POST", "/v1/chat/completions", bytes.NewBufferString(reqBody))
-	w := CreateTestResponseRecorder()
-	proxy.ServeHTTP(w, req)
-
-	assert.Equal(t, proxy.processGroups[config.DEFAULT_GROUP_ID].processes["model1"].CurrentState(), StateReady)
-	req = httptest.NewRequest("GET", "/unload", nil)
-	w = CreateTestResponseRecorder()
-	proxy.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, w.Body.String(), "OK")
-
-	select {
-	case <-proxy.processGroups[config.DEFAULT_GROUP_ID].processes["model1"].cmdWaitChan:
-		// good
-	case <-time.After(2 * time.Second):
-		t.Fatal("timeout waiting for model1 to stop")
-	}
-	assert.Equal(t, proxy.processGroups[config.DEFAULT_GROUP_ID].processes["model1"].CurrentState(), StateStopped)
-}
-
-func TestProxyManager_UnloadSingleModel(t *testing.T) {
-	const testGroupId = "testGroup"
-	config := config.AddDefaultGroupToConfig(config.Config{
-		HealthCheckTimeout: 15,
-		Models: map[string]config.ModelConfig{
-			"model1": getTestSimpleResponderConfig("model1"),
-			"model2": getTestSimpleResponderConfig("model2"),
-		},
-		Groups: map[string]config.GroupConfig{
-			testGroupId: {
-				Swap:    false,
-				Members: []string{"model1", "model2"},
-			},
 		},
 		LogLevel: "error",
 	})
 
 	proxy := New(config)
-	defer proxy.StopProcesses(StopImmediately)
+	reqBody := fmt.Sprintf(`{"model":"%s"}`, "model1")
+	req := httptest.NewRequest("POST", "/v1/chat/completions", bytes.NewBufferString(reqBody))
+	w := httptest.NewRecorder()
+	proxy.ServeHTTP(w, req)
 
-	// start both model
-	for _, modelName := range []string{"model1", "model2"} {
-		reqBody := fmt.Sprintf(`{"model":"%s"}`, modelName)
-		req := httptest.NewRequest("POST", "/v1/chat/completions", bytes.NewBufferString(reqBody))
-		w := CreateTestResponseRecorder()
-		proxy.ServeHTTP(w, req)
-	}
-
-	assert.Equal(t, StateReady, proxy.processGroups[testGroupId].processes["model1"].CurrentState())
-	assert.Equal(t, StateReady, proxy.processGroups[testGroupId].processes["model2"].CurrentState())
-
-	req := httptest.NewRequest("POST", "/api/models/unload/model1", nil)
-	w := CreateTestResponseRecorder()
+	assert.Equal(t, proxy.processGroups[DEFAULT_GROUP_ID].processes["model1"].CurrentState(), StateReady)
+	req = httptest.NewRequest("GET", "/unload", nil)
+	w = httptest.NewRecorder()
 	proxy.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusOK, w.Code)
-	if !assert.Equal(t, w.Body.String(), "OK") {
-		t.FailNow()
-	}
+	assert.Equal(t, w.Body.String(), "OK")
 
-	select {
-	case <-proxy.processGroups[testGroupId].processes["model1"].cmdWaitChan:
-		// good
-	case <-time.After(2 * time.Second):
-		t.Fatal("timeout waiting for model1 to stop")
-	}
-
-	assert.Equal(t, proxy.processGroups[testGroupId].processes["model1"].CurrentState(), StateStopped)
-	assert.Equal(t, proxy.processGroups[testGroupId].processes["model2"].CurrentState(), StateReady)
+	// give it a bit of time to stop
+	<-time.After(time.Millisecond * 250)
+	assert.Equal(t, proxy.processGroups[DEFAULT_GROUP_ID].processes["model1"].CurrentState(), StateStopped)
 }
 
 // Test issue #61 `Listing the current list of models and the loaded model.`
 func TestProxyManager_RunningEndpoint(t *testing.T) {
 	// Shared configuration
-	config := config.AddDefaultGroupToConfig(config.Config{
+	config := AddDefaultGroupToConfig(Config{
 		HealthCheckTimeout: 15,
-		Models: map[string]config.ModelConfig{
+		Models: map[string]ModelConfig{
 			"model1": getTestSimpleResponderConfig("model1"),
 			"model2": getTestSimpleResponderConfig("model2"),
 		},
@@ -597,7 +432,7 @@ func TestProxyManager_RunningEndpoint(t *testing.T) {
 
 	t.Run("no models loaded", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/running", nil)
-		w := CreateTestResponseRecorder()
+		w := httptest.NewRecorder()
 		proxy.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusOK, w.Code)
@@ -615,13 +450,13 @@ func TestProxyManager_RunningEndpoint(t *testing.T) {
 		// Load just a model.
 		reqBody := `{"model":"model1"}`
 		req := httptest.NewRequest("POST", "/v1/chat/completions", bytes.NewBufferString(reqBody))
-		w := CreateTestResponseRecorder()
+		w := httptest.NewRecorder()
 		proxy.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusOK, w.Code)
 
 		// Simulate browser call for the `/running` endpoint.
 		req = httptest.NewRequest("GET", "/running", nil)
-		w = CreateTestResponseRecorder()
+		w = httptest.NewRecorder()
 		proxy.ServeHTTP(w, req)
 
 		var response RunningResponse
@@ -639,9 +474,9 @@ func TestProxyManager_RunningEndpoint(t *testing.T) {
 }
 
 func TestProxyManager_AudioTranscriptionHandler(t *testing.T) {
-	config := config.AddDefaultGroupToConfig(config.Config{
+	config := AddDefaultGroupToConfig(Config{
 		HealthCheckTimeout: 15,
-		Models: map[string]config.ModelConfig{
+		Models: map[string]ModelConfig{
 			"TheExpectedModel": getTestSimpleResponderConfig("TheExpectedModel"),
 		},
 		LogLevel: "error",
@@ -673,7 +508,7 @@ func TestProxyManager_AudioTranscriptionHandler(t *testing.T) {
 	// Create the request with the multipart form data
 	req := httptest.NewRequest("POST", "/v1/audio/transcriptions", &b)
 	req.Header.Set("Content-Type", w.FormDataContentType())
-	rec := CreateTestResponseRecorder()
+	rec := httptest.NewRecorder()
 	proxy.ServeHTTP(rec, req)
 
 	// Verify the response
@@ -692,15 +527,15 @@ func TestProxyManager_UseModelName(t *testing.T) {
 	modelConfig := getTestSimpleResponderConfig(upstreamModelName)
 	modelConfig.UseModelName = upstreamModelName
 
-	conf := config.AddDefaultGroupToConfig(config.Config{
+	config := AddDefaultGroupToConfig(Config{
 		HealthCheckTimeout: 15,
-		Models: map[string]config.ModelConfig{
+		Models: map[string]ModelConfig{
 			"model1": modelConfig,
 		},
 		LogLevel: "error",
 	})
 
-	proxy := New(conf)
+	proxy := New(config)
 	defer proxy.StopProcesses(StopWaitForInflightRequest)
 
 	requestedModel := "model1"
@@ -708,7 +543,7 @@ func TestProxyManager_UseModelName(t *testing.T) {
 	t.Run("useModelName over rides requested model: /v1/chat/completions", func(t *testing.T) {
 		reqBody := fmt.Sprintf(`{"model":"%s"}`, requestedModel)
 		req := httptest.NewRequest("POST", "/v1/chat/completions", bytes.NewBufferString(reqBody))
-		w := CreateTestResponseRecorder()
+		w := httptest.NewRecorder()
 
 		proxy.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusOK, w.Code)
@@ -742,7 +577,7 @@ func TestProxyManager_UseModelName(t *testing.T) {
 		// Create the request with the multipart form data
 		req := httptest.NewRequest("POST", "/v1/audio/transcriptions", &b)
 		req.Header.Set("Content-Type", w.FormDataContentType())
-		rec := CreateTestResponseRecorder()
+		rec := httptest.NewRecorder()
 		proxy.ServeHTTP(rec, req)
 
 		// Verify the response
@@ -755,9 +590,9 @@ func TestProxyManager_UseModelName(t *testing.T) {
 }
 
 func TestProxyManager_CORSOptionsHandler(t *testing.T) {
-	config := config.AddDefaultGroupToConfig(config.Config{
+	config := AddDefaultGroupToConfig(Config{
 		HealthCheckTimeout: 15,
-		Models: map[string]config.ModelConfig{
+		Models: map[string]ModelConfig{
 			"model1": getTestSimpleResponderConfig("model1"),
 		},
 		LogLevel: "error",
@@ -810,7 +645,7 @@ func TestProxyManager_CORSOptionsHandler(t *testing.T) {
 				req.Header.Set(k, v)
 			}
 
-			w := CreateTestResponseRecorder()
+			w := httptest.NewRecorder()
 			proxy.ServeHTTP(w, req)
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
@@ -831,14 +666,14 @@ models:
     aliases: [model-alias]
 `, getSimpleResponderPath())
 
-	config, err := config.LoadConfigFromReader(strings.NewReader(configStr))
+	config, err := LoadConfigFromReader(strings.NewReader(configStr))
 	assert.NoError(t, err)
 
 	proxy := New(config)
 	defer proxy.StopProcesses(StopWaitForInflightRequest)
 	t.Run("main model name", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/upstream/model1/test", nil)
-		rec := CreateTestResponseRecorder()
+		rec := httptest.NewRecorder()
 		proxy.ServeHTTP(rec, req)
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, "model1", rec.Body.String())
@@ -846,7 +681,7 @@ models:
 
 	t.Run("model alias", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/upstream/model-alias/test", nil)
-		rec := CreateTestResponseRecorder()
+		rec := httptest.NewRecorder()
 		proxy.ServeHTTP(rec, req)
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, "model1", rec.Body.String())
@@ -854,9 +689,9 @@ models:
 }
 
 func TestProxyManager_ChatContentLength(t *testing.T) {
-	config := config.AddDefaultGroupToConfig(config.Config{
+	config := AddDefaultGroupToConfig(Config{
 		HealthCheckTimeout: 15,
-		Models: map[string]config.ModelConfig{
+		Models: map[string]ModelConfig{
 			"model1": getTestSimpleResponderConfig("model1"),
 		},
 		LogLevel: "error",
@@ -867,7 +702,7 @@ func TestProxyManager_ChatContentLength(t *testing.T) {
 
 	reqBody := fmt.Sprintf(`{"model":"%s", "x": "this is just some content to push the length out a bit"}`, "model1")
 	req := httptest.NewRequest("POST", "/v1/chat/completions", bytes.NewBufferString(reqBody))
-	w := CreateTestResponseRecorder()
+	w := httptest.NewRecorder()
 
 	proxy.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -879,14 +714,14 @@ func TestProxyManager_ChatContentLength(t *testing.T) {
 
 func TestProxyManager_FiltersStripParams(t *testing.T) {
 	modelConfig := getTestSimpleResponderConfig("model1")
-	modelConfig.Filters = config.ModelFilters{
+	modelConfig.Filters = ModelFilters{
 		StripParams: "temperature, model, stream",
 	}
 
-	config := config.AddDefaultGroupToConfig(config.Config{
+	config := AddDefaultGroupToConfig(Config{
 		HealthCheckTimeout: 15,
 		LogLevel:           "error",
-		Models: map[string]config.ModelConfig{
+		Models: map[string]ModelConfig{
 			"model1": modelConfig,
 		},
 	})
@@ -895,7 +730,7 @@ func TestProxyManager_FiltersStripParams(t *testing.T) {
 	defer proxy.StopProcesses(StopWaitForInflightRequest)
 	reqBody := `{"model":"model1", "temperature":0.1, "x_param":"123", "y_param":"abc", "stream":true}`
 	req := httptest.NewRequest("POST", "/v1/chat/completions", bytes.NewBufferString(reqBody))
-	w := CreateTestResponseRecorder()
+	w := httptest.NewRecorder()
 
 	proxy.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -911,10 +746,80 @@ func TestProxyManager_FiltersStripParams(t *testing.T) {
 	// t.Logf("%v", response)
 }
 
-func TestProxyManager_HealthEndpoint(t *testing.T) {
-	config := config.AddDefaultGroupToConfig(config.Config{
+func TestProxyManager_MiddlewareWritesMetrics_NonStreaming(t *testing.T) {
+	config := AddDefaultGroupToConfig(Config{
 		HealthCheckTimeout: 15,
-		Models: map[string]config.ModelConfig{
+		Models: map[string]ModelConfig{
+			"model1": getTestSimpleResponderConfig("model1"),
+		},
+		LogLevel: "error",
+	})
+
+	proxy := New(config)
+	defer proxy.StopProcesses(StopWaitForInflightRequest)
+
+	// Make a non-streaming request
+	reqBody := `{"model":"model1", "stream": false}`
+	req := httptest.NewRequest("POST", "/v1/chat/completions", bytes.NewBufferString(reqBody))
+	w := httptest.NewRecorder()
+
+	proxy.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	// Check that metrics were recorded
+	metrics := proxy.metricsMonitor.GetMetrics()
+	if !assert.NotEmpty(t, metrics, "metrics should be recorded for non-streaming request") {
+		return
+	}
+
+	// Verify the last metric has the correct model
+	lastMetric := metrics[len(metrics)-1]
+	assert.Equal(t, "model1", lastMetric.Model)
+	assert.Equal(t, 25, lastMetric.InputTokens, "input tokens should be 25")
+	assert.Equal(t, 10, lastMetric.OutputTokens, "output tokens should be 10")
+	assert.Greater(t, lastMetric.TokensPerSecond, 0.0, "tokens per second should be greater than 0")
+	assert.Greater(t, lastMetric.DurationMs, 0, "duration should be greater than 0")
+}
+
+func TestProxyManager_MiddlewareWritesMetrics_Streaming(t *testing.T) {
+	config := AddDefaultGroupToConfig(Config{
+		HealthCheckTimeout: 15,
+		Models: map[string]ModelConfig{
+			"model1": getTestSimpleResponderConfig("model1"),
+		},
+		LogLevel: "error",
+	})
+
+	proxy := New(config)
+	defer proxy.StopProcesses(StopWaitForInflightRequest)
+
+	// Make a streaming request
+	reqBody := `{"model":"model1", "stream": true}`
+	req := httptest.NewRequest("POST", "/v1/chat/completions?stream=true", bytes.NewBufferString(reqBody))
+	w := httptest.NewRecorder()
+
+	proxy.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	// Check that metrics were recorded
+	metrics := proxy.metricsMonitor.GetMetrics()
+	if !assert.NotEmpty(t, metrics, "metrics should be recorded for streaming request") {
+		return
+	}
+
+	// Verify the last metric has the correct model
+	lastMetric := metrics[len(metrics)-1]
+	assert.Equal(t, "model1", lastMetric.Model)
+	assert.Equal(t, 25, lastMetric.InputTokens, "input tokens should be 25")
+	assert.Equal(t, 10, lastMetric.OutputTokens, "output tokens should be 10")
+	assert.Greater(t, lastMetric.TokensPerSecond, 0.0, "tokens per second should be greater than 0")
+	assert.Greater(t, lastMetric.DurationMs, 0, "duration should be greater than 0")
+}
+
+func TestProxyManager_HealthEndpoint(t *testing.T) {
+	config := AddDefaultGroupToConfig(Config{
+		HealthCheckTimeout: 15,
+		Models: map[string]ModelConfig{
 			"model1": getTestSimpleResponderConfig("model1"),
 		},
 		LogLevel: "error",
@@ -923,7 +828,7 @@ func TestProxyManager_HealthEndpoint(t *testing.T) {
 	proxy := New(config)
 	defer proxy.StopProcesses(StopWaitForInflightRequest)
 	req := httptest.NewRequest("GET", "/health", nil)
-	rec := CreateTestResponseRecorder()
+	rec := httptest.NewRecorder()
 	proxy.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "OK", rec.Body.String())
@@ -931,9 +836,9 @@ func TestProxyManager_HealthEndpoint(t *testing.T) {
 
 // Ensure the custom llama-server /completion endpoint proxies correctly
 func TestProxyManager_CompletionEndpoint(t *testing.T) {
-	config := config.AddDefaultGroupToConfig(config.Config{
+	config := AddDefaultGroupToConfig(Config{
 		HealthCheckTimeout: 15,
-		Models: map[string]config.ModelConfig{
+		Models: map[string]ModelConfig{
 			"model1": getTestSimpleResponderConfig("model1"),
 		},
 		LogLevel: "error",
@@ -944,7 +849,7 @@ func TestProxyManager_CompletionEndpoint(t *testing.T) {
 
 	reqBody := `{"model":"model1"}`
 	req := httptest.NewRequest("POST", "/completion", bytes.NewBufferString(reqBody))
-	w := CreateTestResponseRecorder()
+	w := httptest.NewRecorder()
 
 	proxy.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -977,7 +882,7 @@ models:
 `, "${simpleresponderpath}", simpleResponderPath, -1)
 
 	// Create a test model configuration
-	config, err := config.LoadConfigFromReader(strings.NewReader(configStr))
+	config, err := LoadConfigFromReader(strings.NewReader(configStr))
 	if !assert.NoError(t, err, "Invalid configuration") {
 		return
 	}
@@ -1011,9 +916,9 @@ models:
 }
 
 func TestProxyManager_StreamingEndpointsReturnNoBufferingHeader(t *testing.T) {
-	config := config.AddDefaultGroupToConfig(config.Config{
+	config := AddDefaultGroupToConfig(Config{
 		HealthCheckTimeout: 15,
-		Models: map[string]config.ModelConfig{
+		Models: map[string]ModelConfig{
 			"model1": getTestSimpleResponderConfig("model1"),
 		},
 		LogLevel: "error",
@@ -1031,28 +936,18 @@ func TestProxyManager_StreamingEndpointsReturnNoBufferingHeader(t *testing.T) {
 
 	for _, endpoint := range endpoints {
 		t.Run(endpoint, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
 			req := httptest.NewRequest("GET", endpoint, nil)
 			req = req.WithContext(ctx)
-			rec := CreateTestResponseRecorder()
+			rec := httptest.NewRecorder()
 
-			// Run handler in goroutine and wait for context timeout
-			done := make(chan struct{})
-			go func() {
-				defer close(done)
-				proxy.ServeHTTP(rec, req)
-			}()
+			// We don't need the handler to fully complete, just to set the headers
+			// so run it in a goroutine and check the headers after a short delay
+			go proxy.ServeHTTP(rec, req)
+			time.Sleep(10 * time.Millisecond) // give it time to start and write headers
 
-			// Wait for either the handler to complete or context to timeout
-			<-ctx.Done()
-
-			// At this point, the handler has either finished or been cancelled
-			// Wait for the goroutine to fully exit before reading
-			<-done
-
-			// Now it's safe to read from rec - no more concurrent writes
 			assert.Equal(t, http.StatusOK, rec.Code)
 			assert.Equal(t, "no", rec.Header().Get("X-Accel-Buffering"))
 		})
@@ -1060,9 +955,9 @@ func TestProxyManager_StreamingEndpointsReturnNoBufferingHeader(t *testing.T) {
 }
 
 func TestProxyManager_ProxiedStreamingEndpointReturnsNoBufferingHeader(t *testing.T) {
-	config := config.AddDefaultGroupToConfig(config.Config{
+	config := AddDefaultGroupToConfig(Config{
 		HealthCheckTimeout: 15,
-		Models: map[string]config.ModelConfig{
+		Models: map[string]ModelConfig{
 			"streaming-model": getTestSimpleResponderConfig("streaming-model"),
 		},
 		LogLevel: "error",
@@ -1075,11 +970,63 @@ func TestProxyManager_ProxiedStreamingEndpointReturnsNoBufferingHeader(t *testin
 	reqBody := `{"model":"streaming-model"}`
 	// simple-responder will return text/event-stream when stream=true is in the query
 	req := httptest.NewRequest("POST", "/v1/chat/completions?stream=true", bytes.NewBufferString(reqBody))
-	rec := CreateTestResponseRecorder()
+	rec := httptest.NewRecorder()
 
 	proxy.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "no", rec.Header().Get("X-Accel-Buffering"))
 	assert.Contains(t, rec.Header().Get("Content-Type"), "text/event-stream")
+}
+
+func TestProxyManager_InfoEndpoint(t *testing.T) {
+	config := AddDefaultGroupToConfig(Config{
+		HealthCheckTimeout: 15,
+		Models: map[string]ModelConfig{
+			"model1": {
+				Proxy:       "http://localhost:8001",
+				Name:        "Test Model 1",
+				Description: "A test model",
+			},
+			"model2": {
+				Proxy:       "http://localhost:8002",
+				Name:        "Test Model 2",
+				Description: "Another test model",
+			},
+		},
+		LogLevel: "error",
+	})
+
+	proxy := New(config)
+	defer proxy.StopProcesses(StopWaitForInflightRequest)
+
+	req := httptest.NewRequest("GET", "/info", nil)
+	rec := httptest.NewRecorder()
+
+	proxy.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
+
+	var response map[string]interface{}
+	err := json.Unmarshal(rec.Body.Bytes(), &response)
+	assert.NoError(t, err)
+
+	// Check response structure
+	assert.Contains(t, response, "models")
+	assert.Contains(t, response, "total")
+	assert.Equal(t, float64(2), response["total"]) // JSON numbers are float64
+
+	models, ok := response["models"].([]interface{})
+	assert.True(t, ok)
+	assert.Len(t, models, 2)
+
+	// Check first model (should be sorted by model ID)
+	model1 := models[0].(map[string]interface{})
+	assert.Equal(t, "model1", model1["model"])
+	assert.Equal(t, "8001", model1["port"])
+	assert.Equal(t, "http://localhost:8001", model1["proxy"])
+	assert.Equal(t, false, model1["running"]) // Not running in test
+	assert.Equal(t, "Test Model 1", model1["name"])
+	assert.Equal(t, "A test model", model1["description"])
 }

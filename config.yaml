@@ -1,0 +1,59 @@
+groups:
+    all-models:
+        exclusive: false
+        members:
+            - bartowski-mistral-22b-v0.1-gguf-q5_k
+            - quantfactory-tinyllama-1.1b-chat-v1.0-gguf-q4
+        persistent: false
+        startPort: 8200
+        swap: false
+healthCheckTimeout: 300
+logLevel: info
+macros:
+    llama-embed-base: |
+        binaries/llama-server/build/bin/llama-server --host 127.0.0.1 --port ${PORT} --embedding
+    llama-server-base: |
+        binaries/llama-server/build/bin/llama-server --host 127.0.0.1 --port ${PORT} --metrics --flash-attn auto --no-warmup --dry-penalty-last-n 0 --batch-size 2048 --ubatch-size 512
+models:
+    bartowski-mistral-22b-v0.1-gguf-q5_k:
+        aliases:
+            - bartowski/Mistral-22B-v0.1-GGUF:q5_k
+            - bartowski/Mistral-22B-v0.1-GGUF
+            - mistral-22b-v01-2b
+        cmd: |
+            ${llama-server-base}
+            --model /home/matei/claude-test/ClaraCore-main/models/bartowski_Mistral-22B-v0.1-GGUF/Mistral-22B-v0.1-Q5_K_M.gguf
+            --ctx-size 16384
+            -ngl 999
+            --cache-type-k q4_0
+            --cache-type-v q4_0
+            --jinja
+            --batch-size 2048
+            --ubatch-size 512
+            --keep 4096
+            --temp 0.7
+            --repeat-penalty 1.05
+            --repeat-last-n 256
+            --top-p 0.9
+            --top-k 40
+            --min-p 0.1
+        description: 'Model size: 22B - Quantization: Q5_K_M'
+        env:
+            - CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
+            - GGML_CUDA_FORCE_MMQ=1
+        name: Mistral-22B-v0.1-Q5_K_M
+        proxy: http://127.0.0.1:${PORT}
+        ttl: 300
+    quantfactory-tinyllama-1.1b-chat-v1.0-gguf-q4:
+        aliases:
+            - QuantFactory/TinyLlama-1.1B-Chat-v1.0-GGUF:q4
+            - QuantFactory/TinyLlama-1.1B-Chat-v1.0-GGUF
+        cmd: |-
+            /home/matei/claude-test/ClaraCore-main/binaries/llama-server/build/bin/llama-server --host 127.0.0.1 --port 8101
+              --model /home/matei/claude-test/ClaraCore-main/downloads/QuantFactory_TinyLlama-1.1B-Chat-v1.0-GGUF/TinyLlama-1.1B-Chat-v1.0.Q4_0.gguf
+              --ctx-size 4096
+              -ngl 999
+        name: QuantFactory/TinyLlama-1.1B-Chat-v1.0-GGUF
+        proxy: http://127.0.0.1:8101
+        ttl: 300
+startPort: 8100

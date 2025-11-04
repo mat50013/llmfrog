@@ -1,0 +1,13 @@
+{
+  "stats": {},
+  "global_stats": {
+    "model_id": "_global_",
+    "total_tokens": 0,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "request_count": 0,
+    "last_used": "0001-01-01T00:00:00Z",
+    "first_used": "2025-11-04T18:35:18.357056524+01:00",
+    "total_duration_ms": 0
+  }
+}

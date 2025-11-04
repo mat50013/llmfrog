@@ -1,224 +1,296 @@
-![llama-swap header image](header2.png)
-![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/mostlygeek/llama-swap/total)
-![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/mostlygeek/llama-swap/go-ci.yml)
-![GitHub Repo stars](https://img.shields.io/github/stars/mostlygeek/llama-swap)
+<div align="center">
+  <h1>🐸 FrogLLM</h1>
+  <h3>Leap into AI - The Amphibious LLM Server</h3>
+  <img src="https://img.shields.io/badge/Powered%20by-Lily%20Pads-green?style=for-the-badge" alt="Powered by Lily Pads">
+  <img src="https://img.shields.io/badge/GPU%20Pond-Ready-blue?style=for-the-badge" alt="GPU Pond Ready">
+  <img src="https://img.shields.io/badge/Frog%20Approved-100%25-brightgreen?style=for-the-badge" alt="Frog Approved">
+</div>
 
-# llama-swap
+---
 
-Run multiple LLM models on your machine and hot-swap between them as needed. llama-swap works with any OpenAI API-compatible server, giving you the flexibility to switch models without restarting your applications.
+> 🐸 **"Ribbit! Welcome to the pond!"** - Where your AI models hop seamlessly between lily pads (GPUs) for maximum performance!
 
-Built in Go for performance and simplicity, llama-swap has zero dependencies and is incredibly easy to set up. Get started in minutes - just one binary and one configuration file.
+**FrogLLM** (formerly FrogLLM) is an intelligent auto-setup layer for llama.cpp that makes AI inference as smooth as a frog's leap. Just point it at your GGUF models, and watch it automatically configure everything - from GPU detection to optimal memory allocation. Built on the solid foundation of [llama-swap](https://github.com/mostlygeek/llama-swap), FrogLLM adds smart automation that makes deployment a breeze! 🌊
 
-## Features:
+## 🏃 Quick Hop Start
 
-- ✅ Easy to deploy and configure: one binary, one configuration file. no external dependencies
-- ✅ On-demand model switching
-- ✅ Use any local OpenAI compatible server (llama.cpp, vllm, tabbyAPI, etc)
-  - future proof, upgrade your inference servers at any time.
-- ✅ OpenAI API supported endpoints:
-  - `v1/completions`
-  - `v1/chat/completions`
-  - `v1/embeddings`
-  - `v1/audio/speech` ([#36](https://github.com/mostlygeek/llama-swap/issues/36))
-  - `v1/audio/transcriptions` ([docs](https://github.com/mostlygeek/llama-swap/issues/41#issuecomment-2722637867))
-- ✅ llama-server (llama.cpp) supported endpoints
-  - `v1/rerank`, `v1/reranking`, `/rerank`
-  - `/infill` - for code infilling
-  - `/completion` - for completion endpoint
-- ✅ llama-swap API
-  - `/ui` - web UI
-  - `/upstream/:model_id` - direct access to upstream server ([demo](https://github.com/mostlygeek/llama-swap/pull/31))
-  - `/models/unload` - manually unload running models ([#58](https://github.com/mostlygeek/llama-swap/issues/58))
-  - `/running` - list currently running models ([#61](https://github.com/mostlygeek/llama-swap/issues/61))
-  - `/log` - remote log monitoring
-  - `/health` - just returns "OK"
-- ✅ Customizable
-  - Run multiple models at once with `Groups` ([#107](https://github.com/mostlygeek/llama-swap/issues/107))
-  - Automatic unloading of models after timeout by setting a `ttl`
-  - Reliable Docker and Podman support using `cmd` and `cmdStop` together
-  - Preload models on startup with `hooks` ([#235](https://github.com/mostlygeek/llama-swap/pull/235))
+```bash
+# 🐸 One leap and you're ready!
+curl -fsSL https://raw.githubusercontent.com/mat50013/llmfrog/main/scripts/install.sh | bash
 
-### Web UI
+# 🌊 Start the pond server
+frogllm --models-folder /path/to/your/gguf/models --min-free-memory 15
 
-llama-swap includes a real time web interface for monitoring logs and controlling models:
-
-<img width="1360" height="963" alt="image" src="https://github.com/user-attachments/assets/adef4a8e-de0b-49db-885a-8f6dedae6799" />
-
-The Activity Page shows recent requests:
-
-<img width="1360" height="963" alt="image" src="https://github.com/user-attachments/assets/5f3edee6-d03a-4ae5-ae06-b20ac1f135bd" />
-
-## Installation
-
-llama-swap can be installed in multiple ways
-
-1. Docker
-2. Homebrew (OSX and Linux)
-3. WinGet
-4. From release binaries
-5. From source
-
-### Docker Install ([download images](https://github.com/mostlygeek/llama-swap/pkgs/container/llama-swap))
-
-Nightly container images with llama-swap and llama-server are built for multiple platforms (cuda, vulkan, intel, etc).
-
-```shell
-$ docker pull ghcr.io/mostlygeek/llama-swap:cuda
-
-# run with a custom configuration and models directory
-$ docker run -it --rm --runtime nvidia -p 9292:8080 \
- -v /path/to/models:/models \
- -v /path/to/custom/config.yaml:/app/config.yaml \
- ghcr.io/mostlygeek/llama-swap:cuda
+# 🎉 Visit the lily pad: http://localhost:5800/ui/setup
 ```
 
-<details>
-<summary>
-more examples
-</summary>
+## 🌟 What Makes FrogLLM Special?
 
-```shell
-# pull latest images per platform
-docker pull ghcr.io/mostlygeek/llama-swap:cpu
-docker pull ghcr.io/mostlygeek/llama-swap:cuda
-docker pull ghcr.io/mostlygeek/llama-swap:vulkan
-docker pull ghcr.io/mostlygeek/llama-swap:intel
-docker pull ghcr.io/mostlygeek/llama-swap:musa
+### 🐸 Frog-Themed Features
+- **🏞️ Frog Pond GPU Dashboard** - Watch your GPUs (lily pads) in real-time!
+- **🌊 Smart Water Management** - Automatic VRAM (pond water) allocation
+- **🐸 Frog-First UI** - Complete frog-themed interface with hop animations
+- **💎 Crystal Clear Memory** - See exactly how much "pond water" is available
 
-# tagged llama-swap, platform and llama-server version images
-docker pull ghcr.io/mostlygeek/llama-swap:v166-cuda-b6795
+### 🚀 Powerful Features
 
+#### 🎯 **Zero-Config Auto-Setup**
+FrogLLM automatically detects your hardware and configures everything:
+- 🔍 Finds all your GGUF models
+- 🖥️ Detects GPUs (CUDA/ROCm/Vulkan/Metal)
+- ⬇️ Downloads optimal llama.cpp binaries
+- ⚙️ Generates production-ready configs
+- 🐸 Starts serving immediately!
+
+#### 💾 **Smart Memory Management**
+Keep your pond healthy with intelligent memory management:
+```bash
+# Keep 20% of pond water free for other frogs
+frogllm --min-free-memory 20
+```
+- Auto-unloads models when memory is low
+- Prevents system crashes from memory exhaustion
+- Monitors both GPU VRAM and system RAM
+
+#### 🎯 **GPU-First Optimization**
+FrogLLM always prioritizes GPU performance:
+- Forces all layers to GPU with `-ngl 999`
+- Uses all available GPUs automatically
+- CUDA acceleration enabled by default
+- Custom llama-server binary path support:
+```bash
+frogllm --llama-server-path /path/to/custom/llama-server
 ```
 
-</details>
-
-### Homebrew Install (macOS/Linux)
-
-```shell
-brew tap mostlygeek/llama-swap
-brew install llama-swap
-llama-swap --config path/to/config.yaml --listen localhost:8080
+#### 📦 **Intelligent Model Downloads**
+Never worry about split models again:
+- **Automatic Split Model Detection** - Recognizes patterns like:
+  - `model-00001-of-00005.gguf`
+  - `model.Q4_K_M-00001-of-00003.gguf`
+  - `model.gguf.part1of5`
+- **Smart Grouping** - Groups split models for one-click download
+- **Auto-Download on API Request** - Models download automatically when requested
+- **HuggingFace Integration** - Direct download from HF with API key support
+- **Command Line Token Support** - Set HF token directly via CLI:
+```bash
+frogllm --hf-token your_hf_token_here --models-folder /path/to/models
 ```
 
-### WinGet Install (Windows)
+## 🐸 The Frog Pond Dashboard
 
-> [!NOTE]
-> WinGet is maintained by community contributor [Dvd-Znf](https://github.com/Dvd-Znf) ([#327](https://github.com/mostlygeek/llama-swap/issues/327)). It is not an official part of llama-swap.
+Visit `http://localhost:5800/ui/gpu` to see your GPU pond in action:
 
-```shell
-# install
-C:\> winget install llama-swap
+```
+🐸 Frog Pond GPU Status
+🌊 Pond Backend: CUDA | Lily Pads: 8
 
-# upgrade
-C:\> winget upgrade llama-swap
+🌊 Total Pond Water: 300.00 GB
+💎 Crystal Clear: 250.00 GB
+🐸 Frog Occupied: 50.00 GB
+
+🐸 Lily Pad 0: NVIDIA RTX 6000
+   🌊 Water Usage: ████████░░ 80%
+   Temperature: 45°C | Power: 250W
+
+🐸 Lily Pad 1: NVIDIA RTX 6000
+   🌊 Water Usage: ██████░░░░ 60%
+   Temperature: 42°C | Power: 200W
 ```
 
-### Pre-built Binaries
+## 📦 Installation Methods
 
-Binaries are available on the [release](https://github.com/mostlygeek/llama-swap/releases) page for Linux, Mac, Windows and FreeBSD.
+### 🐸 Native Installation (Recommended)
 
-### Building from source
+**Linux/macOS - Hop right in:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/mat50013/llmfrog/main/scripts/install.sh | bash
+```
 
-1. Building requires Go and Node.js (for UI).
-1. `git clone https://github.com/mostlygeek/llama-swap.git`
-1. `make clean all`
-1. look in the `build/` subdirectory for the llama-swap binary
+**Windows - Leap from PowerShell:**
+```powershell
+irm https://raw.githubusercontent.com/mat50013/llmfrog/main/scripts/install.ps1 | iex
+```
 
-## Configuration
+### 🐳 Docker Pond (GPU Support)
+
+**NVIDIA GPUs (CUDA Pond):**
+```bash
+docker run -d --gpus all -p 5800:5800 \
+  -v ./models:/models \
+  frogllm:cuda --models-folder /models
+```
+
+**AMD GPUs (ROCm Pond):**
+```bash
+docker run -d --device=/dev/kfd --device=/dev/dri \
+  -p 5800:5800 -v ./models:/models \
+  frogllm:rocm --models-folder /models
+```
+
+### 🔨 Build Your Own Lily Pad
+
+```bash
+git clone https://github.com/mat50013/llmfrog.git
+cd FrogLLM
+python3 build.py  # Builds the complete pond ecosystem
+```
+
+## 🎮 Using FrogLLM
+
+### 🐸 Basic Pond Setup
+```bash
+# Auto-setup with smart memory management
+frogllm --models-folder ~/models --min-free-memory 15
+
+# Custom GPU binary (for maximum hop speed)
+frogllm --llama-server-path /opt/llama-cuda/llama-server
+
+# Manual pond configuration
+frogllm -ram 64 -vram 300 -backend cuda
+```
+
+### 🌊 API Usage
+
+**Chat with your frogs:**
+```bash
+curl http://localhost:5800/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "llama-3-70b",
+    "messages": [{"role": "user", "content": "Why do frogs love GPUs?"}]
+  }'
+```
+
+**Auto-download models (they hop right in!):**
+```bash
+curl http://localhost:5800/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "HF-Token: your-token" \
+  -d '{
+    "model": "meta-llama/Llama-3-8B-Instruct",
+    "messages": [{"role": "user", "content": "Ribbit!"}]
+  }'
+# FrogLLM will download the model automatically!
+```
+
+### 🖥️ Web Interface - The Lily Pad Control Center
+
+- **🏞️ GPU Pond Monitor**: `http://localhost:5800/ui/gpu` - Watch your lily pads in real-time
+- **🐸 Setup Wizard**: `http://localhost:5800/ui/setup` - Configure your pond
+- **📦 Model Pond**: `http://localhost:5800/ui/models` - Manage your AI frogs
+- **⬇️ Frog Downloader**: `http://localhost:5800/ui/downloader` - Get new models with smart grouping
+- **⚙️ Pond Settings**: `http://localhost:5800/ui/config` - Fine-tune the ecosystem
+
+## 🎯 Advanced Frog Features
+
+### 🔄 Smart Model Grouping
+FrogLLM automatically detects and groups split models:
+- Downloads all parts with one click
+- Preserves folder structure from HuggingFace
+- Handles complex split patterns intelligently
+- Shows combined size for split models
+
+### 💾 Memory Pond Management
+```yaml
+groups:
+  "frog-pond":
+    minFreeMemoryPercent: 15.0  # Keep pond healthy
+    autoUnload: true  # Frogs hop out when space is needed
+    members: ["llama-70b", "qwen-72b", "mistral-7b"]
+```
+
+### 🚀 GPU Optimization
+FrogLLM ensures maximum GPU utilization:
+- All layers forced to GPU (`-ngl 999`)
+- Multi-GPU support with `CUDA_VISIBLE_DEVICES`
+- Automatic CUDA/ROCm/Vulkan detection
+- Custom binary paths for specialized setups
+
+## 🛠️ Configuration
+
+FrogLLM generates smart configs automatically:
 
 ```yaml
-# minimum viable config.yaml
-
+# Auto-generated by FrogLLM 🐸
 models:
-  model1:
-    cmd: llama-server --port ${PORT} --model /path/to/model.gguf
+  "llama-3-70b":
+    cmd: |
+      binaries/llama-server/llama-server
+      --model models/llama-3-70b-q4.gguf
+      --host 127.0.0.1 --port ${PORT}
+      --flash-attn auto -ngl 999  # All layers on lily pads!
+    proxy: "http://127.0.0.1:${PORT}"
+
+groups:
+  "frog-pond":
+    minFreeMemoryPercent: 15.0
+    autoUnload: true
+    members: ["llama-3-70b", "qwen-72b"]
 ```
 
-That's all you need to get started:
+## 📚 API Endpoints
 
-1. `models` - holds all model configurations
-2. `model1` - the ID used in API calls
-3. `cmd` - the command to run to start the server.
-4. `${PORT}` - an automatically assigned port number
+### 🐸 Core Frog Services
+- `GET /v1/models` - List all swimming models with detailed information:
+  - Model size (GB), quantization type, context length
+  - Loading status (`loaded`, `unloaded`, `loading`)
+  - File existence and path information
+- `POST /v1/chat/completions` - Chat with your AI frogs
+- `POST /v1/embeddings` - Get frog embeddings
 
-Almost all configuration settings are optional and can be added one step at a time:
+### 🏞️ Pond Management
+- `GET /api/gpu/stats` - Real-time lily pad statistics
+- `GET /api/system/detection` - Detect pond hardware
+- `POST /api/config/regenerate` - Rebuild the pond
+- `GET /api/events` - Live pond events (SSE)
 
-- Advanced features
-  - `groups` to run multiple models at once
-  - `hooks` to run things on startup
-  - `macros` reusable snippets
-- Model customization
-  - `ttl` to automatically unload models
-  - `aliases` to use familiar model names (e.g., "gpt-4o-mini")
-  - `env` to pass custom environment variables to inference servers
-  - `cmdStop` gracefully stop Docker/Podman containers
-  - `useModelName` to override model names sent to upstream servers
-  - `${PORT}` automatic port variables for dynamic port assignment
-  - `filters` rewrite parts of requests before sending to the upstream server
+### 📦 Model Pond
+- `POST /api/models/download` - Add new frogs to the pond
+- `GET /api/models/downloads` - Check download progress
+- `POST /api/models/load/{model}` - Load specific model (auto-download if needed)
+- `POST /api/models/unload/{model}` - Unload individual model from lily pad
+- `POST /api/models/unload` - Unload all models to free up the pond
+- `POST /api/config/append-model` - Register new models
 
-See the [configuration documentation](docs/configuration.md) for all options.
+## 🙏 Credits & Acknowledgments
 
-## How does llama-swap work?
+**FrogLLM hops on the shoulders of giants:**
 
-When a request is made to an OpenAI compatible endpoint, llama-swap will extract the `model` value and load the appropriate server configuration to serve it. If the wrong upstream server is running, it will be replaced with the correct one. This is where the "swap" part comes in. The upstream server is automatically swapped to handle the request correctly.
+- **[@mostlygeek](https://github.com/mostlygeek)** - Creator of [llama-swap](https://github.com/mostlygeek/llama-swap), the foundation that makes our pond possible! 🎉
+- **[llama.cpp team](https://github.com/ggerganov/llama.cpp)** - The powerful inference engine
+- **[Georgi Gerganov](https://github.com/ggerganov)** - Creator of llama.cpp
 
-In the most basic configuration llama-swap handles one model at a time. For more advanced use cases, the `groups` feature allows multiple models to be loaded at the same time. You have complete control over how your system resources are used.
+This project extends llama-swap with intelligent automation, maintaining 100% compatibility while adding the magic of automatic setup and frog-themed goodness! 🐸
 
-## Reverse Proxy Configuration (nginx)
+## 🤝 Contributing
 
-If you deploy llama-swap behind nginx, disable response buffering for streaming endpoints. By default, nginx buffers responses which breaks Server‑Sent Events (SSE) and streaming chat completion. ([#236](https://github.com/mostlygeek/llama-swap/issues/236))
+Help us make the pond better! We welcome all contributions:
 
-Recommended nginx configuration snippets:
+1. Fork the pond 🍴
+2. Create your feature branch (`git checkout -b feature/amazing-frog`)
+3. Commit your changes (`git commit -m '🐸 Add amazing frog feature'`)
+4. Push to the branch (`git push origin feature/amazing-frog`)
+5. Open a Pull Request 🎉
 
-```nginx
-# SSE for UI events/logs
-location /api/events {
-    proxy_pass http://your-llama-swap-backend;
-    proxy_buffering off;
-    proxy_cache off;
-}
+## 📄 License
 
-# Streaming chat completions (stream=true)
-location /v1/chat/completions {
-    proxy_pass http://your-llama-swap-backend;
-    proxy_buffering off;
-    proxy_cache off;
-}
-```
+MIT License - Same as llama-swap. Free as a frog! See [LICENSE](LICENSE) for details.
 
-As a safeguard, llama-swap also sets `X-Accel-Buffering: no` on SSE responses. However, explicitly disabling `proxy_buffering` at your reverse proxy is still recommended for reliable streaming behavior.
+## 🔗 Pond Links
 
-## Monitoring Logs on the CLI
+- [🐸 FrogLLM Issues](https://github.com/prave/FrogLLM/issues)
+- [🏗️ Original llama-swap](https://github.com/mostlygeek/llama-swap)
+- [⚙️ llama.cpp](https://github.com/ggerganov/llama.cpp)
+- [📚 Documentation Wiki](https://github.com/prave/FrogLLM/wiki)
 
-```shell
-# sends up to the last 10KB of logs
-curl http://host/logs'
+---
 
-# streams combined logs
-curl -Ns 'http://host/logs/stream'
+<div align="center">
 
-# just llama-swap's logs
-curl -Ns 'http://host/logs/stream/proxy'
+### 🐸 **Ribbit! Happy hopping!** 🐸
 
-# just upstream's logs
-curl -Ns 'http://host/logs/stream/upstream'
+**Built with 💚 by the frog community, for the frog community**
 
-# stream and filter logs with linux pipes
-curl -Ns http://host/logs/stream | grep 'eval time'
+*Leap into the future of AI inference*
 
-# skips history and just streams new log entries
-curl -Ns 'http://host/logs/stream?no-history'
-```
-
-## Do I need to use llama.cpp's server (llama-server)?
-
-Any OpenAI compatible server would work. llama-swap was originally designed for llama-server and it is the best supported.
-
-For Python based inference servers like vllm or tabbyAPI it is recommended to run them via podman or docker. This provides clean environment isolation as well as responding correctly to `SIGTERM` signals for proper shutdown.
-
-## Star History
-
-> [!NOTE]
-> ⭐️ Star this project to help others discover it!
-
-[![Star History Chart](https://api.star-history.com/svg?repos=mostlygeek/llama-swap&type=Date)](https://www.star-history.com/#mostlygeek/llama-swap&Date)
+</div>

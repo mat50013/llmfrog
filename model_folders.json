@@ -1,0 +1,22 @@
+{
+  "folders": [
+    {
+      "path": "/home/matei/claude-test/ClaraCore-main/models/bartowski_Mistral-22B-v0.1-GGUF",
+      "addedAt": "2025-10-28T17:15:19.861477666+01:00",
+      "lastScanned": "2025-10-28T17:15:19.861477666+01:00",
+      "modelCount": 0,
+      "recursive": true,
+      "enabled": true
+    },
+    {
+      "path": "/home/matei/claude-test/ClaraCore-main/downloads/QuantFactory_TinyLlama-1.1B-Chat-v1.0-GGUF",
+      "addedAt": "2025-11-04T18:33:51.742095286+01:00",
+      "lastScanned": "2025-11-04T18:33:51.742095286+01:00",
+      "modelCount": 0,
+      "recursive": true,
+      "enabled": true
+    }
+  ],
+  "lastScan": "2025-11-04T18:33:51.742097962+01:00",
+  "version": "1.0"
+}

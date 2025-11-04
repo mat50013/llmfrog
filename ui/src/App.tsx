@@ -6,6 +6,11 @@ import { useTheme } from "./contexts/ThemeProvider";
 import ActivityPage from "./pages/Activity";
 import LogViewerPage from "./pages/LogViewer";
 import ModelPage from "./pages/Models";
+import ModelDownloaderPage from "./pages/ModelDownloader";
+import Configuration from "./pages/Configuration";
+import OnboardConfig from "./pages/OnboardConfig";
+import ComponentsDemo from "./pages/ComponentsDemo";
+import GPUMonitor from "./pages/GPUMonitor";
 
 function App() {
   const { setConnectionState } = useTheme();
@@ -19,16 +24,23 @@ function App() {
 
   return (
     <Router basename="/ui/">
-      <div className="flex flex-col h-screen">
+      <div className="flex flex-col h-screen bg-background">
         <Header />
 
-        <main className="flex-1 overflow-auto p-4">
-          <Routes>
-            <Route path="/" element={<LogViewerPage />} />
-            <Route path="/models" element={<ModelPage />} />
-            <Route path="/activity" element={<ActivityPage />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+        <main className="flex-1 overflow-hidden">
+          <div className="h-full overflow-auto p-6">
+            <Routes>
+              <Route path="/" element={<LogViewerPage />} />
+              <Route path="/models" element={<ModelPage />} />
+              <Route path="/activity" element={<ActivityPage />} />
+              <Route path="/gpu" element={<GPUMonitor />} />
+              <Route path="/downloader" element={<ModelDownloaderPage />} />
+              <Route path="/config" element={<Configuration />} />
+              <Route path="/setup" element={<OnboardConfig />} />
+              <Route path="/demo" element={<ComponentsDemo />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </div>
         </main>
       </div>
     </Router>

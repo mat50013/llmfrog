@@ -1,0 +1,34 @@
+# Example FrogLLM config for NVIDIA RTX 6000
+# Copy this to config.yaml and adjust paths
+
+healthCheckTimeout: 300
+logLevel: info
+startPort: 8100
+minFreeMemoryPercent: 20
+
+macros:
+  "llama-server-base": >
+    /path/to/llama-server
+    --host 127.0.0.1
+    --port ${PORT}
+    --metrics
+    --flash-attn auto
+    --no-warmup
+
+models:
+  "your-model-name":
+    cmd: ${llama-server-base}
+      --model /path/to/your/model.gguf
+      -ngl 999  # All layers on GPU for RTX 6000
+      --ctx-size 8192
+      --batch-size 2048
+      --ubatch-size 512
+    warm: false
+
+groups:
+  "(default)":
+    swap: true
+    exclusive: false  # Allow multiple models
+    persistent: false
+    members:
+      - "your-model-name"

@@ -1,0 +1,6 @@
+✅ Memory threshold set to 10.0% (overriding config)
+📁 Watching config.yaml for changes - server will auto-reload when config changes
+FrogLLM listening on :5804
+[INFO] Request 127.0.0.1 "GET /api/gpu/stats HTTP/1.1" 200 127 "curl/7.88.1" 254.858µs
+[INFO] Request 127.0.0.1 "GET /ui/ HTTP/1.1" 200 767 "curl/7.88.1" 7.013435ms
+Received signal terminated, shutting down...

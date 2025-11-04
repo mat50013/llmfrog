@@ -1,0 +1,14 @@
+{
+  "setup_progress": {
+    "status": "completed",
+    "current_step": "Saving configuration file...",
+    "progress": 100,
+    "total_models": 1,
+    "processed_models": 1,
+    "current_model": "Mistral-22B-v0.1-Q5_K_M",
+    "error": "",
+    "completed": true,
+    "started_at": "2025-11-04T18:31:01.58697549+01:00",
+    "updated_at": "2025-11-04T18:31:02.064616363+01:00"
+  }
+}

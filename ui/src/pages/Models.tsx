@@ -4,7 +4,9 @@ import { LogPanel } from "./LogViewer";
 import { usePersistentState } from "../hooks/usePersistentState";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { useTheme } from "../contexts/ThemeProvider";
-import { RiEyeFill, RiEyeOffFill, RiSwapBoxFill, RiEjectLine, RiMenuFill } from "react-icons/ri";
+import { EyeIcon, EyeOffIcon, StopCircleIcon, RefreshCwIcon, ExternalLinkIcon, CpuIcon } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Table } from "../components";
+import { motion } from "framer-motion";
 
 export default function ModelsPage() {
   const { isNarrow } = useTheme();
@@ -18,11 +20,9 @@ export default function ModelsPage() {
       </Panel>
 
       <PanelResizeHandle
-        className={
-          direction === "horizontal"
-            ? "w-2 h-full bg-primary hover:bg-success transition-colors rounded"
-            : "w-full h-2 bg-primary hover:bg-success transition-colors rounded"
-        }
+        className={`panel-resize-handle ${
+          direction === "horizontal" ? "w-3 h-full" : "w-full h-3 horizontal"
+        }`}
       />
       <Panel collapsible={true} defaultSize={50} minSize={0}>
         <div className="flex flex-col h-full space-y-4">
@@ -37,12 +37,10 @@ export default function ModelsPage() {
 }
 
 function ModelsPanel() {
-  const { models, loadModel, unloadAllModels, unloadSingleModel } = useAPI();
-  const { isNarrow } = useTheme();
+  const { models, loadModel, unloadAllModels, unloadModel } = useAPI();
   const [isUnloading, setIsUnloading] = useState(false);
   const [showUnlisted, setShowUnlisted] = usePersistentState("showUnlisted", true);
-  const [showIdorName, setShowIdorName] = usePersistentState<"id" | "name">("showIdorName", "id"); // true = show ID, false = show name
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [showIdorName, setShowIdorName] = usePersistentState<"id" | "name">("showIdorName", "id");
 
   const filteredModels = useMemo(() => {
     return models.filter((model) => showUnlisted || !model.unlisted);
@@ -63,432 +61,267 @@ function ModelsPanel() {
 
   const toggleIdorName = useCallback(() => {
     setShowIdorName((prev) => (prev === "name" ? "id" : "name"));
-  }, [showIdorName]);
+  }, [setShowIdorName]);
 
   return (
-    <div className="card h-full flex flex-col">
-      <div className="shrink-0">
-        <div className="flex justify-between items-baseline">
-          <h2 className={isNarrow ? "text-xl" : ""}>Models</h2>
-          {isNarrow && (
-            <div className="relative">
-              <button className="btn text-base flex items-center gap-2 py-1" onClick={() => setMenuOpen(!menuOpen)}>
-                <RiMenuFill size="20" />
-              </button>
-              {menuOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-surface border border-gray-200 dark:border-white/10 rounded shadow-lg z-20">
-                  <button
-                    className="w-full text-left px-4 py-2 hover:bg-secondary-hover flex items-center gap-2"
-                    onClick={() => {
-                      toggleIdorName();
-                      setMenuOpen(false);
-                    }}
-                  >
-                    <RiSwapBoxFill size="20" /> {showIdorName === "id" ? "Show Name" : "Show ID"}
-                  </button>
-                  <button
-                    className="w-full text-left px-4 py-2 hover:bg-secondary-hover flex items-center gap-2"
-                    onClick={() => {
-                      setShowUnlisted(!showUnlisted);
-                      setMenuOpen(false);
-                    }}
-                  >
-                    {showUnlisted ? <RiEyeOffFill size="20" /> : <RiEyeFill size="20" />}{" "}
-                    {showUnlisted ? "Hide Unlisted" : "Show Unlisted"}
-                  </button>
-                  <button
-                    className="w-full text-left px-4 py-2 hover:bg-secondary-hover flex items-center gap-2"
-                    onClick={() => {
-                      handleUnloadAllModels();
-                      setMenuOpen(false);
-                    }}
-                    disabled={isUnloading}
-                  >
-                    <RiEjectLine size="24" /> {isUnloading ? "Unloading..." : "Unload All"}
-                  </button>
-                </div>
-              )}
+    <Card className="h-full flex flex-col m-2">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 bg-gradient-to-br from-brand-500 to-brand-600 rounded-lg flex items-center justify-center">
+              <CpuIcon className="w-5 h-5 text-white" />
             </div>
-          )}
-        </div>
-        {!isNarrow && (
-          <div className="flex justify-between">
-            <div className="flex gap-2">
-              <button
-                className="btn text-base flex items-center gap-2"
-                onClick={toggleIdorName}
-                style={{ lineHeight: "1.2" }}
-              >
-                <RiSwapBoxFill size="20" /> {showIdorName === "id" ? "ID" : "Name"}
-              </button>
-
-              <button
-                className="btn text-base flex items-center gap-2"
-                onClick={() => setShowUnlisted(!showUnlisted)}
-                style={{ lineHeight: "1.2" }}
-              >
-                {showUnlisted ? <RiEyeFill size="20" /> : <RiEyeOffFill size="20" />} unlisted
-              </button>
+            <div>
+              <CardTitle className="text-2xl">Models</CardTitle>
+              <CardDescription>
+                {filteredModels.length} models available
+                <span className="text-xs ml-2 text-brand-500">• Auto-downloads on API request</span>
+              </CardDescription>
             </div>
-            <button
-              className="btn text-base flex items-center gap-2"
-              onClick={handleUnloadAllModels}
-              disabled={isUnloading}
-            >
-              <RiEjectLine size="24" /> {isUnloading ? "Unloading..." : "Unload All"}
-            </button>
           </div>
+          
+          <Button
+            variant="danger"
+            size="lg"
+            loading={isUnloading}
+            onClick={handleUnloadAllModels}
+            disabled={isUnloading}
+            className="flex items-center gap-3"
+          >
+            <StopCircleIcon className="w-5 h-5" />
+            {isUnloading ? "Unloading All..." : "Unload All Models"}
+          </Button>
+        </div>
+
+        {/* Controls */}
+        <div className="flex gap-3 mt-4">
+          <Button
+            variant="secondary"
+            onClick={toggleIdorName}
+            className="flex items-center gap-2"
+          >
+            <RefreshCwIcon className="w-4 h-4" />
+            Show {showIdorName === "id" ? "Names" : "IDs"}
+          </Button>
+
+          <Button
+            variant={showUnlisted ? "primary" : "secondary"}
+            onClick={() => setShowUnlisted(!showUnlisted)}
+            className="flex items-center gap-2"
+          >
+            {showUnlisted ? <EyeIcon className="w-4 h-4" /> : <EyeOffIcon className="w-4 h-4" />}
+            {showUnlisted ? "Hide" : "Show"} Unlisted
+          </Button>
+        </div>
+      </CardHeader>
+
+      <CardContent className="flex-1 overflow-y-auto">
+        <div className="space-y-3">
+          {filteredModels.map((model, index) => (
+            <motion.div
+              key={model.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05 }}
+            >
+              <ModelCard
+                model={model}
+                showIdorName={showIdorName}
+                onLoad={() => loadModel(model.id)}
+                onUnload={() => unloadModel(model.id)}
+              />
+            </motion.div>
+          ))}
+        </div>
+        
+        {filteredModels.length === 0 && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-12"
+          >
+            <div className="w-16 h-16 bg-surface-secondary rounded-full mx-auto mb-4 flex items-center justify-center">
+              <CpuIcon className="w-8 h-8 text-text-tertiary" />
+            </div>
+            <p className="text-text-secondary mb-2">No models found</p>
+            <p className="text-text-tertiary text-sm">Try adjusting your filters</p>
+          </motion.div>
         )}
-      </div>
-
-      <div className="flex-1 overflow-y-auto">
-        <table className="w-full">
-          <thead className="sticky top-0 bg-card z-10">
-            <tr className="text-left border-b border-gray-200 dark:border-white/10 bg-surface">
-              <th>{showIdorName === "id" ? "Model ID" : "Name"}</th>
-              <th></th>
-              <th>State</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredModels.map((model) => (
-              <tr key={model.id} className="border-b hover:bg-secondary-hover border-gray-200">
-                <td className={`${model.unlisted ? "text-txtsecondary" : ""}`}>
-                  <a href={`/upstream/${model.id}/`} className="font-semibold" target="_blank">
-                    {showIdorName === "id" ? model.id : model.name !== "" ? model.name : model.id}
-                  </a>
-
-                  {!!model.description && (
-                    <p className={model.unlisted ? "text-opacity-70" : ""}>
-                      <em>{model.description}</em>
-                    </p>
-                  )}
-                </td>
-                <td className="w-12">
-                  {model.state === "stopped" ? (
-                    <button className="btn btn--sm" onClick={() => loadModel(model.id)}>
-                      Load
-                    </button>
-                  ) : (
-                    <button
-                      className="btn btn--sm"
-                      onClick={() => unloadSingleModel(model.id)}
-                      disabled={model.state !== "ready"}
-                    >
-                      Unload
-                    </button>
-                  )}
-                </td>
-                <td className="w-20">
-                  <span className={`w-16 text-center status status--${model.state}`}>{model.state}</span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 
-interface HistogramData {
-  bins: number[];
-  min: number;
-  max: number;
-  binSize: number;
-  p99: number;
-  p95: number;
-  p50: number;
+// Modern ModelCard component
+interface ModelCardProps {
+  model: any;
+  showIdorName: "id" | "name";
+  onLoad: () => void;
+  onUnload: () => void;
 }
 
-function TokenHistogram({ data }: { data: HistogramData }) {
-  const { bins, min, max, p50, p95, p99 } = data;
-  const maxCount = Math.max(...bins);
-
-  const height = 120;
-  const padding = { top: 10, right: 15, bottom: 25, left: 45 };
-
-  // Use viewBox for responsive sizing
-  const viewBoxWidth = 600;
-  const chartWidth = viewBoxWidth - padding.left - padding.right;
-  const chartHeight = height - padding.top - padding.bottom;
-
-  const barWidth = chartWidth / bins.length;
-  const range = max - min;
-
-  // Calculate x position for a given value
-  const getXPosition = (value: number) => {
-    return padding.left + ((value - min) / range) * chartWidth;
-  };
-
+function ModelCard({ model, showIdorName, onLoad, onUnload }: ModelCardProps) {
+  const displayName = showIdorName === "id" ? model.id : (model.name || model.id);
+  const isAvailable = model.state === "stopped";
+  const isRunning = model.state === "ready" || model.state === "loading";
+  
   return (
-    <div className="mt-2 w-full">
-      <svg
-        viewBox={`0 0 ${viewBoxWidth} ${height}`}
-        className="w-full h-auto"
-        preserveAspectRatio="xMidYMid meet"
-      >
-        {/* Y-axis */}
-        <line
-          x1={padding.left}
-          y1={padding.top}
-          x2={padding.left}
-          y2={height - padding.bottom}
-          stroke="currentColor"
-          strokeWidth="1"
-          opacity="0.3"
-        />
+    <Card 
+      variant="elevated" 
+      hover={isAvailable}
+      className={`transition-all duration-300 ${
+        model.unlisted ? 'opacity-75' : ''
+      } ${isAvailable ? 'hover:border-brand-500/50' : ''}`}
+    >
+      <CardContent>
+        <div className="flex items-center justify-between">
+          {/* Left side: Model info */}
+          <div className="flex items-center gap-4 flex-1 min-w-0">
+            {/* Model Avatar */}
+            <div className="w-12 h-12 bg-gradient-to-br from-brand-500 to-brand-600 rounded-lg flex items-center justify-center flex-shrink-0">
+              <span className="text-white font-bold text-lg">
+                {displayName.charAt(0).toUpperCase()}
+              </span>
+            </div>
+            
+            {/* Model Details */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-3 mb-1">
+                <h3 className={`font-semibold text-lg ${
+                  model.unlisted ? 'text-text-tertiary' : 'text-text-primary'
+                } truncate`}>
+                  {displayName}
+                </h3>
+                <ModelStatusBadge state={model.state} />
+              </div>
+              
+              {showIdorName === "name" && model.name && (
+                <p className="text-text-tertiary text-sm font-mono mb-1 truncate">{model.id}</p>
+              )}
+              
+              {model.description && (
+                <p className={`text-sm line-clamp-1 ${
+                  model.unlisted ? 'text-text-tertiary' : 'text-text-secondary'
+                }`}>
+                  {model.description}
+                </p>
+              )}
+            </div>
+          </div>
 
-        {/* X-axis */}
-        <line
-          x1={padding.left}
-          y1={height - padding.bottom}
-          x2={viewBoxWidth - padding.right}
-          y2={height - padding.bottom}
-          stroke="currentColor"
-          strokeWidth="1"
-          opacity="0.3"
-        />
+          {/* Right side: Actions */}
+          <div className="flex items-center gap-3 flex-shrink-0 ml-4">
+            <a 
+              href={model.proxyUrl && model.proxyUrl.trim().length > 0 ? `${model.proxyUrl.replace(/\/$/, '')}/` : `/upstream/${model.id}/`} 
+              target="_blank"
+              title="View model details"
+              className="inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-border-secondary bg-surface hover:bg-surface-secondary transition-colors"
+            >
+              <ExternalLinkIcon className="w-4 h-4" />
+            </a>
+            
+            {isRunning && (
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={onUnload}
+                className="min-w-[80px] flex items-center gap-2"
+              >
+                <StopCircleIcon className="w-4 h-4" />
+                Unload
+              </Button>
+            )}
+            {!isRunning && (
+              <Button
+                variant={isAvailable ? "primary" : "secondary"}
+                size="sm"
+                disabled={!isAvailable}
+                onClick={onLoad}
+                className="min-w-[80px]"
+              >
+                {isAvailable ? "Load" : model.state}
+              </Button>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
-        {/* Histogram bars */}
-        {bins.map((count, i) => {
-          const barHeight = maxCount > 0 ? (count / maxCount) * chartHeight : 0;
-          const x = padding.left + i * barWidth;
-          const y = height - padding.bottom - barHeight;
-          const binStart = min + i * data.binSize;
-          const binEnd = binStart + data.binSize;
-
-          return (
-            <g key={i}>
-              <rect
-                x={x}
-                y={y}
-                width={Math.max(barWidth - 1, 1)}
-                height={barHeight}
-                fill="currentColor"
-                opacity="0.6"
-                className="text-blue-500 dark:text-blue-400 hover:opacity-90 transition-opacity cursor-pointer"
-              />
-              <title>{`${binStart.toFixed(1)} - ${binEnd.toFixed(1)} tokens/sec\nCount: ${count}`}</title>
-            </g>
-          );
-        })}
-
-        {/* Percentile lines */}
-        <line
-          x1={getXPosition(p50)}
-          y1={padding.top}
-          x2={getXPosition(p50)}
-          y2={height - padding.bottom}
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeDasharray="4 2"
-          opacity="0.7"
-          className="text-gray-600 dark:text-gray-400"
-        />
-
-        <line
-          x1={getXPosition(p95)}
-          y1={padding.top}
-          x2={getXPosition(p95)}
-          y2={height - padding.bottom}
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeDasharray="4 2"
-          opacity="0.7"
-          className="text-orange-500 dark:text-orange-400"
-        />
-
-        <line
-          x1={getXPosition(p99)}
-          y1={padding.top}
-          x2={getXPosition(p99)}
-          y2={height - padding.bottom}
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeDasharray="4 2"
-          opacity="0.7"
-          className="text-green-500 dark:text-green-400"
-        />
-
-        {/* X-axis labels */}
-        <text
-          x={padding.left}
-          y={height - 5}
-          fontSize="10"
-          fill="currentColor"
-          opacity="0.6"
-          textAnchor="start"
-        >
-          {min.toFixed(1)}
-        </text>
-
-        <text
-          x={viewBoxWidth - padding.right}
-          y={height - 5}
-          fontSize="10"
-          fill="currentColor"
-          opacity="0.6"
-          textAnchor="end"
-        >
-          {max.toFixed(1)}
-        </text>
-
-        {/* X-axis label */}
-        <text
-          x={padding.left + chartWidth / 2}
-          y={height - 2}
-          fontSize="10"
-          fill="currentColor"
-          opacity="0.6"
-          textAnchor="middle"
-        >
-          Tokens/Second Distribution
-        </text>
-      </svg>
-    </div>
+// Modern StatusBadge component
+function ModelStatusBadge({ state }: { state: string }) {
+  const getStatusConfig = (state: string) => {
+    switch (state) {
+      case 'stopped':
+        return { color: 'bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-300', icon: '⏹️' };
+      case 'loading':
+        return { color: 'bg-info-100 text-info-800 dark:bg-info-900/20 dark:text-info-300', icon: '⏳' };
+      case 'ready':
+        return { color: 'bg-success-100 text-success-800 dark:bg-success-900/20 dark:text-success-300', icon: '✅' };
+      case 'error':
+        return { color: 'bg-error-100 text-error-800 dark:bg-error-900/20 dark:text-error-300', icon: '❌' };
+      default:
+        return { color: 'bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-300', icon: '❓' };
+    }
+  };
+  
+  const config = getStatusConfig(state);
+  
+  return (
+    <motion.span 
+      initial={{ scale: 0.8, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      className={`px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${config.color}`}
+    >
+      <span className="text-xs">{config.icon}</span>
+      {state}
+    </motion.span>
   );
 }
 
 function StatsPanel() {
   const { metrics } = useAPI();
 
-  const [totalRequests, totalInputTokens, totalOutputTokens, tokenStats, histogramData] = useMemo(() => {
+  const statsData = useMemo(() => {
     const totalRequests = metrics.length;
     if (totalRequests === 0) {
-      return [0, 0, 0, { p99: 0, p95: 0, p50: 0 }, null];
+      return [{
+        requests: '0',
+        processed: '0',
+        generated: '0',
+        tokensPerSec: '0.00'
+      }];
     }
     const totalInputTokens = metrics.reduce((sum, m) => sum + m.input_tokens, 0);
     const totalOutputTokens = metrics.reduce((sum, m) => sum + m.output_tokens, 0);
-
-    // Calculate token statistics using output_tokens and duration_ms
-    // Filter out metrics with invalid duration or output tokens
-    const validMetrics = metrics.filter((m) => m.duration_ms > 0 && m.output_tokens > 0);
-    if (validMetrics.length === 0) {
-      return [totalRequests, totalInputTokens, totalOutputTokens, { p99: 0, p95: 0, p50: 0 }, null];
-    }
-
-    // Calculate tokens/second for each valid metric
-    const tokensPerSecond = validMetrics.map((m) => m.output_tokens / (m.duration_ms / 1000));
-
-    // Sort for percentile calculation
-    const sortedTokensPerSecond = [...tokensPerSecond].sort((a, b) => a - b);
-
-    // Calculate percentiles - showing speed thresholds where X% of requests are SLOWER (below)
-    // P99: 99% of requests are slower than this speed (99th percentile - fast requests)
-    // P95: 95% of requests are slower than this speed (95th percentile)
-    // P50: 50% of requests are slower than this speed (median)
-    const p99 = sortedTokensPerSecond[Math.floor(sortedTokensPerSecond.length * 0.99)];
-    const p95 = sortedTokensPerSecond[Math.floor(sortedTokensPerSecond.length * 0.95)];
-    const p50 = sortedTokensPerSecond[Math.floor(sortedTokensPerSecond.length * 0.5)];
-
-    // Create histogram data
-    const min = Math.min(...tokensPerSecond);
-    const max = Math.max(...tokensPerSecond);
-    const binCount = Math.min(30, Math.max(10, Math.floor(tokensPerSecond.length / 5))); // Adaptive bin count
-    const binSize = (max - min) / binCount;
-
-    const bins = Array(binCount).fill(0);
-    tokensPerSecond.forEach((value) => {
-      const binIndex = Math.min(Math.floor((value - min) / binSize), binCount - 1);
-      bins[binIndex]++;
-    });
-
-    const histogramData = {
-      bins,
-      min,
-      max,
-      binSize,
-      p99,
-      p95,
-      p50,
-    };
-
-    return [
-      totalRequests,
-      totalInputTokens,
-      totalOutputTokens,
-      {
-        p99: p99.toFixed(2),
-        p95: p95.toFixed(2),
-        p50: p50.toFixed(2),
-      },
-      histogramData,
-    ];
+    const avgTokensPerSecond = (metrics.reduce((sum, m) => sum + m.tokens_per_second, 0) / totalRequests).toFixed(2);
+    
+    return [{
+      requests: totalRequests.toString(),
+      processed: new Intl.NumberFormat().format(totalInputTokens),
+      generated: new Intl.NumberFormat().format(totalOutputTokens),
+      tokensPerSec: avgTokensPerSecond
+    }];
   }, [metrics]);
 
-  const nf = new Intl.NumberFormat();
+  const columns = [
+    { key: 'requests', title: 'Requests', dataIndex: 'requests' as const, align: 'right' as const },
+    { key: 'processed', title: 'Processed', dataIndex: 'processed' as const, align: 'right' as const },
+    { key: 'generated', title: 'Generated', dataIndex: 'generated' as const, align: 'right' as const },
+    { key: 'tokensPerSec', title: 'Tokens/Sec', dataIndex: 'tokensPerSec' as const, align: 'right' as const },
+  ];
 
   return (
-    <div className="card">
-      <div className="rounded-lg overflow-hidden border border-card-border-inner">
-        <table className="min-w-full divide-y divide-card-border-inner">
-          <thead className="bg-secondary">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-txtmain">
-                Requests
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-txtmain border-l border-card-border-inner">
-                Processed
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-txtmain border-l border-card-border-inner">
-                Generated
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-txtmain border-l border-card-border-inner">
-                Token Stats (tokens/sec)
-              </th>
-            </tr>
-          </thead>
-
-          <tbody className="bg-surface divide-y divide-card-border-inner">
-            <tr className="hover:bg-secondary">
-              <td className="px-4 py-4 text-sm font-semibold text-gray-900 dark:text-white">{totalRequests}</td>
-
-              <td className="px-4 py-4 text-sm text-gray-700 dark:text-gray-300 border-l border-gray-200 dark:border-white/10">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">{nf.format(totalInputTokens)}</span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">tokens</span>
-                </div>
-              </td>
-
-              <td className="px-4 py-4 text-sm text-gray-700 dark:text-gray-300 border-l border-gray-200 dark:border-white/10">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">{nf.format(totalOutputTokens)}</span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">tokens</span>
-                </div>
-              </td>
-
-              <td className="px-4 py-4 border-l border-gray-200 dark:border-white/10">
-                <div className="space-y-3">
-                  <div className="grid grid-cols-3 gap-2 items-center">
-                    <div className="text-center">
-                      <div className="text-xs text-gray-500 dark:text-gray-400">P50</div>
-                      <div className="mt-1 inline-block rounded-full bg-gray-100 dark:bg-white/5 px-3 py-1 text-sm font-semibold text-gray-800 dark:text-white">
-                        {tokenStats.p50}
-                      </div>
-                    </div>
-
-                    <div className="text-center">
-                      <div className="text-xs text-gray-500 dark:text-gray-400">P95</div>
-                      <div className="mt-1 inline-block rounded-full bg-gray-100 dark:bg-white/5 px-3 py-1 text-sm font-semibold text-gray-800 dark:text-white">
-                        {tokenStats.p95}
-                      </div>
-                    </div>
-
-                    <div className="text-center">
-                      <div className="text-xs text-gray-500 dark:text-gray-400">P99</div>
-                      <div className="mt-1 inline-block rounded-full bg-gray-100 dark:bg-white/5 px-3 py-1 text-sm font-semibold text-gray-800 dark:text-white">
-                        {tokenStats.p99}
-                      </div>
-                    </div>
-                  </div>
-                  {histogramData && <TokenHistogram data={histogramData} />}
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <Card>
+      <CardContent className="p-0">
+        <Table 
+          data={statsData}
+          columns={columns}
+          sortable={false}
+          className="[&_th]:text-right [&_td]:text-right"
+        />
+      </CardContent>
+    </Card>
   );
 }

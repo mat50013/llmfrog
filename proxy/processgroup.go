@@ -3,16 +3,13 @@ package proxy
 import (
 	"fmt"
 	"net/http"
-	"slices"
 	"sync"
-
-	"github.com/mostlygeek/llama-swap/proxy/config"
 )
 
 type ProcessGroup struct {
 	sync.Mutex
 
-	config     config.Config
+	config     Config
 	id         string
 	swap       bool
 	exclusive  bool
@@ -26,7 +23,7 @@ type ProcessGroup struct {
 	lastUsedProcess string
 }
 
-func NewProcessGroup(id string, config config.Config, proxyLogger *LogMonitor, upstreamLogger *LogMonitor) *ProcessGroup {
+func NewProcessGroup(id string, config Config, proxyLogger *LogMonitor, upstreamLogger *LogMonitor) *ProcessGroup {
 	groupConfig, ok := config.Groups[id]
 	if !ok {
 		panic("Unable to find configuration for group id: " + id)
@@ -59,18 +56,24 @@ func (pg *ProcessGroup) ProxyRequest(modelID string, writer http.ResponseWriter,
 		return fmt.Errorf("model %s not part of group %s", modelID, pg.id)
 	}
 
+	// Check if the process exists and is not nil
+	process := pg.processes[modelID]
+	if process == nil {
+		return fmt.Errorf("process for model %s is not initialized in group %s", modelID, pg.id)
+	}
+
 	if pg.swap {
 		pg.Lock()
 		if pg.lastUsedProcess != modelID {
 
 			// is there something already running?
-			if pg.lastUsedProcess != "" {
+			if pg.lastUsedProcess != "" && pg.processes[pg.lastUsedProcess] != nil {
 				pg.processes[pg.lastUsedProcess].Stop()
 			}
 
 			// wait for the request to the new model to be fully handled
 			// and prevent race conditions see issue #277
-			pg.processes[modelID].ProxyRequest(writer, request)
+			process.ProxyRequest(writer, request)
 			pg.lastUsedProcess = modelID
 
 			// short circuit and exit
@@ -80,35 +83,26 @@ func (pg *ProcessGroup) ProxyRequest(modelID string, writer http.ResponseWriter,
 		pg.Unlock()
 	}
 
-	pg.processes[modelID].ProxyRequest(writer, request)
+	process.ProxyRequest(writer, request)
 	return nil
 }
 
 func (pg *ProcessGroup) HasMember(modelName string) bool {
-	return slices.Contains(pg.config.Groups[pg.id].Members, modelName)
-}
+	// First check the config for members
+	if groupConfig, exists := pg.config.Groups[pg.id]; exists {
+		for _, member := range groupConfig.Members {
+			if member == modelName {
+				return true
+			}
+		}
+	}
 
-func (pg *ProcessGroup) StopProcess(modelID string, strategy StopStrategy) error {
+	// Also check the actual processes map in case it was added dynamically
 	pg.Lock()
-
-	process, exists := pg.processes[modelID]
-	if !exists {
-		pg.Unlock()
-		return fmt.Errorf("process not found for %s", modelID)
-	}
-
-	if pg.lastUsedProcess == modelID {
-		pg.lastUsedProcess = ""
-	}
+	_, hasProcess := pg.processes[modelName]
 	pg.Unlock()
 
-	switch strategy {
-	case StopImmediately:
-		process.StopImmediately()
-	default:
-		process.Stop()
-	}
-	return nil
+	return hasProcess
 }
 
 func (pg *ProcessGroup) StopProcesses(strategy StopStrategy) {

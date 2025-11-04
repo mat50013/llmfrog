@@ -1,0 +1,66 @@
+# Auto-generated FrogLLM configuration (SMART GPU ALLOCATION)
+# Generated from models in: /home/matei/claude-test/ClaraCore-main/models/bartowski_Mistral-22B-v0.1-GGUF
+# Binary: binaries/llama-server/build/bin/llama-server ()
+# System: linux/amd64
+# Hardware monitoring: STATIC (total memory)
+# Algorithm: Hybrid VRAM+RAM allocation with intelligent layer distribution
+
+healthCheckTimeout: 300
+logLevel: info
+startPort: 8100
+
+macros:
+  "llama-server-base": >
+    binaries/llama-server/build/bin/llama-server
+    --host 127.0.0.1
+    --port ${PORT}
+    --metrics
+    --flash-attn auto
+    --no-warmup
+    --dry-penalty-last-n 0
+    --batch-size 2048
+    --ubatch-size 512
+
+  "llama-embed-base": >
+    binaries/llama-server/build/bin/llama-server
+    --host 127.0.0.1
+    --port ${PORT}
+    --embedding
+
+models:
+  "mistral-22b-v01-2b":
+    name: "Mistral-22B-v0.1-Q5_K_M"
+    description: "Model size: 2B - Quantization: Q5_K_M"
+    cmd: |
+      ${llama-server-base}
+      --model /home/matei/claude-test/ClaraCore-main/models/bartowski_Mistral-22B-v0.1-GGUF/Mistral-22B-v0.1-Q5_K_M.gguf
+      --ctx-size 16384
+      -ngl 999
+      --cache-type-k q4_0
+      --cache-type-v q4_0
+      --jinja
+      --batch-size 2048
+      --ubatch-size 512
+      --keep 4096
+      --temp 0.7
+      --repeat-penalty 1.05
+      --repeat-last-n 256
+      --top-p 0.9
+      --top-k 40
+      --min-p 0.1
+    proxy: "http://127.0.0.1:${PORT}"
+    ttl: 300
+    env:
+      - "CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7"
+      - "GGML_CUDA_FORCE_MMQ=1"
+
+
+groups:
+  "all-models":
+    swap: false
+    exclusive: false
+    persistent: false
+    startPort: 8200
+    members:
+      - "mistral-22b-v01-2b"
+
